@@ -1,35 +1,143 @@
 # Same Spot Diff
 
-2枚の写真の撮影位置のズレをOpenCV WASMで自動補正してから、変化した場所だけを見つける完全ローカルのブラウザーツールです。
+[![GitHub Pages](https://github.com/ttomohisa/htmlapps-same-spot-diff/actions/workflows/deploy-pages.yml/badge.svg)](https://github.com/ttomohisa/htmlapps-same-spot-diff/actions/workflows/deploy-pages.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Single HTML](https://img.shields.io/badge/distribution-single%20HTML-0ea5e9)](https://ttomohisa.github.io/htmlapps-same-spot-diff/)
 
-単純な画像差分では、カメラが数pxずれただけで画面全体が差分になります。Same Spot Diffは **ORB特徴点 → BFMatcher → RANSAC Homography → warpPerspective** で比較画像を基準画像へ合わせてから差分を計算します。
+[English README](README.md)
 
-## 特徴
+Before / Afterの写真が少し違う位置から撮られていても、自動でズレを合わせてから「本当に変わった場所」を見つける、プライバシー重視の単一HTMLブラウザーツールです。
 
-- 撮影位置・回転・軽い遠近差を自動補正
-- **After撮影ガイド**: Beforeを半透明で重ねたカメラ画面で、同じ位置・角度に合わせてAfterを撮影
-- 差分箇所を赤くハイライト
-- 位置合わせ状態 / 変化率 / 変化箇所数を分かりやすく表示
-- 主表示は「変化を見る」「位置合わせを確認」の2つに整理し、元画像の個別表示は補助メニューに収納
-- Before / Afterスライダーと交互表示（Blink）で、目視でも変化を確認
-- 結果画像はスマホのピンチ操作・ドラッグ、PCの＋/−・ドラッグで細部を確認
-- 毎回変わる時計・反射などを「無視する範囲」として指定可能。枠表示だけを隠して比較結果をすっきり確認できます
-- 「小さな変化を無視」は比較画像の大きさに合わせて内部しきい値を調整
-- 感度、小さな差分の除外、明るさ差の軽減を調整
-- 感度変更時は位置合わせを再利用して差分だけ高速再計算
+選んだ写真や比較結果は外部へアップロードせず、比較処理は端末内で完結します。
+
+## 🚀 デモ
+
+### [Same Spot DiffをGitHub Pagesで開く](https://ttomohisa.github.io/htmlapps-same-spot-diff/)
+
+GitHub Pagesから最初のHTMLを読み込んだ後、位置合わせ、差分検出、無視範囲、スライダー表示、交互表示、拡大確認、PNG保存などはブラウザー内で処理します。選択した写真をアプリがサーバーへ送信することはありません。
+
+## 主な機能
+
+- 撮影位置・回転・軽い遠近差を自動で補正してから比較
+- 変化した場所を赤く強調表示
+- ズレ補正の状態、変化した面積、変化箇所数を分かりやすく表示
+- **After撮影ガイド**: Beforeをライブカメラへ半透明で重ね、同じ位置から撮りやすくする
+- Before / Afterを境界線で見比べるスライダー表示
+- Before / Afterを交互に切り替えるBlink表示
+- 2枚を重ねてズレが残っていないか確認
+- スマホではピンチズーム＋ドラッグ、PCでは＋/−＋ドラッグで細部を確認
+- 時計、反射、画面、葉など毎回変わる場所を**無視する範囲**として指定
+- 無視範囲は有効なまま、確認用の枠だけ非表示にできる
+- 「小さな変化を無視」は比較画像サイズに合わせて内部しきい値を調整
+- 結果のすぐ下で変化の拾いやすさ・明るさ差などを調整
+- 差分設定だけ変更した場合は位置合わせ結果を再利用し、不要な再計算を減らす
 - JPEG / PNG / WebP対応
-- スマホ写真の縦向き表示に対応
-- 入力画像は外部送信しない
-- OpenCV JS/WASMも配布HTMLへ内包
-- `dist/index.html` と `dist/index.self-extract.html` の2種類を生成
-- 日本語 / English 切替
-- ダークモードなし
+- 表示中の結果をPNG保存
+- 日本語 / English切替
+- SVG favicon内蔵
+- OpenCV JavaScript / WebAssemblyを生成HTMLへ内包
+- 実行時の分析ツール、アップロードAPI、CDN、GitHubダウンロードなし
 
-## OpenCV WASMをGitHub Releaseから取り込む
+## すぐ使う
 
-このアプリは `htmlapps-opencv-wasm-builder` のGitHub ReleaseにあるOpenCV JS/WASMをビルド時に取り込みます。ローカルにbuilderリポジトリを置く必要はありません。
+### Web版を使う
 
-取得元は `opencv-release.json` に固定しています。初期値は次のとおりです。
+[デモを開く](https://ttomohisa.github.io/htmlapps-same-spot-diff/)だけで使えます。インストールやアカウントは不要です。
+
+### 単一HTMLを使う
+
+1. このリポジトリをダウンロードまたはcloneします。
+2. `dist/index.html` を現在のブラウザーで開きます。
+3. BeforeとAfterを追加します。
+4. **2枚を比較する**を押します。
+
+通常の比較機能はローカルHTMLだけでも使えます。**After撮影ガイド**はブラウザーのカメラ機能を使うため、GitHub PagesなどHTTPSで開いた場合が最も確実です。
+
+## 使い方
+
+1. **Before**写真を追加します。
+2. **After**写真を追加するか、**Beforeに合わせて撮影**で撮影位置を合わせながらAfterを撮ります。
+3. **2枚を比較する**を押します。
+4. まずは**変化を見る**で赤いハイライトを確認します。
+5. 必要に応じて**ズレを確認**、**スライダーで見る**、**交互に見る**を使います。
+6. 赤い表示が多すぎる・少なすぎるときだけ**結果を調整**を開きます。
+7. 時計、反射、モニター、動く葉など毎回変わる場所は**無視する範囲**に指定します。
+8. 拡大・移動して細部を確認し、必要なら現在の表示をPNG保存します。
+
+### After撮影ガイド
+
+同じ場所を後日もう一度撮る用途に向いています。
+
+1. 先にBeforeを追加します。
+2. After欄の**Beforeに合わせて撮影**を押します。
+3. ブラウザーのカメラ利用を許可します。
+4. ライブ映像にBeforeが半透明で重なるので、主な輪郭や角が合うように端末位置を調整します。
+5. 必要ならBeforeの濃さを変えたり、一時的に非表示にします。
+6. 撮影すると、その写真がそのままAfterへ追加されます。
+
+ライブ映像と撮影した画像は端末内だけで扱います。カメラは撮影ガイドを開いている間だけ使用します。
+
+### 結果の見方
+
+| 表示 | 用途 |
+| --- | --- |
+| **変化を見る** | 検出した変化を赤く強調 |
+| **ズレを確認** | 補正した2枚を重ねて残ったズレを確認 |
+| **スライダーで見る** | 境界線を動かしてBefore / Afterを左右比較 |
+| **交互に見る** | Before / Afterを交互表示して目視で変化を発見 |
+| **元画像を個別に見る** | Beforeまたは補正後Afterだけを確認 |
+
+### 無視する範囲
+
+毎回変わる場所を比較対象から外す機能です。
+
+- **範囲を追加**を押し、結果画像上をドラッグして指定します。
+- **1つ戻す**、**すべて消す**で編集できます。
+- **枠を隠す**は枠表示だけを消します。無視設定そのものは有効なままです。
+- 新しく範囲を追加するときは、編集しやすいよう枠が自動で再表示されます。
+
+## 向いている用途
+
+- 部屋・家具のBefore / After
+- 工事前後の記録
+- 設備・施設の確認
+- 店舗の陳列や掲示物
+- 商品・部品の外観確認
+- 同じ棚、壁、盤面、作業場所などの定点比較
+
+## GitHub Pagesで公開
+
+このリポジトリには、単一HTMLをビルド・検証して`dist`をGitHub Pagesへ公開するWorkflowが含まれています。
+
+1. GitHubへ `htmlapps-same-spot-diff` としてpushします。
+2. **Settings → Pages → Build and deployment → Source** で **GitHub Actions** を選びます。
+3. `main`へpushするか、Actionsから **Deploy standalone app to GitHub Pages** を手動実行します。
+4. 成功すると `https://ttomohisa.github.io/htmlapps-same-spot-diff/` で利用できます。
+
+GitHub Pagesがまだ有効化されていない場合でも、Workflowはビルド検証まで行い、初回設定手順を表示します。
+
+## 開発・ビルド構成
+
+```text
+.
+├─ src/index.template.html       # アプリ本体テンプレート
+├─ app.config.json               # アプリ情報・ビルド設定
+├─ dependencies.json             # 内包する依存関係
+├─ opencv-release.json           # OpenCV builderのRelease/profile固定
+├─ import-opencv.bat             # 固定ReleaseからOpenCVを取得
+├─ vendor/opencv/                # 取り込んだOpenCV JS/WASM
+├─ build-standalone.bat          # Windows用ビルド入口
+├─ build-standalone.ps1          # 単一HTMLビルダー
+├─ scripts/                      # 検証・補助スクリプト
+├─ dist/index.html               # 読みやすい単一HTML
+└─ dist/index.self-extract.html  # 小さめの自己展開単一HTML
+```
+
+## OpenCVを固定Releaseから取り込む
+
+OpenCV JavaScript/WASMは [`htmlapps-opencv-wasm-builder`](https://github.com/ttomohisa/htmlapps-opencv-wasm-builder) の固定Releaseから取得します。
+
+現在の固定値:
 
 ```text
 repository: ttomohisa/htmlapps-opencv-wasm-builder
@@ -37,40 +145,33 @@ tag: v1.0.0
 profile: same-spot-diff
 ```
 
-Windowsで次を実行してください。
+Windowsで:
 
-```text
+```bat
 import-opencv.bat
 ```
 
-スクリプトはGitHub Release APIからAsset一覧を取得し、まず `same-spot-diff` 専用ZIPを探します。専用Assetがまだ公開されていないReleaseでは `browser-kitty-full` にフォールバックし、その場合はWASMが大きくなる旨を警告します。
+このスクリプトは:
 
-取り込み後は `vendor/opencv/` に次のファイルが入ります。
+- `opencv-release.json` からrepository / tag / profileを読む
+- `same-spot-diff` 専用Release Assetを優先
+- 専用Assetがない場合だけ `browser-kitty-full` へフォールバック
+- `opencv.js` と `opencv_js.wasm` を必ず同じRelease Assetから取得
+- 実際に使ったRelease / Assetを `vendor/opencv/release-source.json` に記録
 
-```text
-vendor/opencv/
-├─ opencv.js
-├─ opencv_js.wasm
-├─ manifest.json            # Release Assetに含まれる場合
-├─ resolved-profile.json    # Release Assetに含まれる場合
-└─ release-source.json      # 実際に取得したRelease/Assetを記録
-```
+一時的に別Releaseを試す場合:
 
-別バージョンを試す場合だけ、一時的にタグを引数で指定できます。
-
-```text
+```bat
 import-opencv.bat v1.0.1
 ```
 
-正式に更新するときは `opencv-release.json` の `tag` を変更してください。OpenCVのJavaScriptとWASMは常に同じRelease Assetの組を取り込みます。
-
-> ネットワークアクセスが必要なのはこの**ビルド前の取り込み処理だけ**です。生成した単一HTMLはOpenCV JS/WASMを内包し、実行時にGitHubやCDNへ接続しません。GitHub Actionsでもビルドする場合は、取り込み後の `vendor/opencv/opencv.js` と `vendor/opencv/opencv_js.wasm` をリポジトリへコミットしてください。
+正式な更新では `opencv-release.json` の `tag` を変更してください。
 
 ## 単一HTMLをビルド
 
-Windowsで:
+OpenCVを取り込んだ後、Windowsで:
 
-```text
+```bat
 build-standalone.bat
 ```
 
@@ -81,60 +182,80 @@ dist/
 ├─ index.html
 ├─ index.self-extract.html
 ├─ dependency-manifest.json
+├─ self-extract-manifest.json
 ├─ build-size-report.json
 └─ .nojekyll
 ```
 
-OpenCVのJS/WASMはビルド時にgzip → Base64で**各assetを1回だけ**内包します。実行時のCDNアクセスはありません。
+OpenCV JavaScript/WASMはgzip圧縮してHTMLへ内包します。実行時は埋め込んだWASMバイト列をメモリから直接初期化し、外部URLへ取りに行きません。
 
-## 使い方
+通常のWindowsビルドではPython、Node.js、ローカルWebサーバーは不要です。
 
-1. Before写真とAfter写真を追加
-2. 「2枚を比較する」を押す
-3. 「変化を見る」で赤いハイライトを確認
-4. 必要なら「ズレを確認」で2枚の重なりを確認
-5. 赤い表示が多すぎる・少なすぎる場合だけ、結果画像のすぐ下にある「結果を調整」を開く
-6. 必要なら表示中の結果をPNG保存
+## 内部の比較処理
 
-## 向いている比較
-
-- 部屋・家具のBefore / After
-- 工事前後
-- 掲示物や印刷物
-- 商品・部品の外観
-- 同じ方向から撮った設備写真
-
-## 苦手な条件
-
-Homographyは1枚の平面、またはカメラ回転中心に近い撮影を近似する手法です。次の条件では正しい位置合わせができない場合があります。
-
-- 2枚の撮影位置が大きく違う
-- 近景と遠景が混ざり、視差が大きい
-- 模様がほとんどない壁など特徴点が少ない
-- 片方だけ大きく隠れている
-- 強い影、照明、反射の変化
-
-結果は確認用途として使い、測量・検査の最終判定にはそのまま使わないでください。
-
-## リポジトリ構成
+画面上では専門用語をなるべく出しませんが、内部ではOpenCVを使って次の流れで処理します。
 
 ```text
-.
-├─ APP_SPEC.md
-├─ app.config.json
-├─ dependencies.json
-├─ opencv-release.json
-├─ import-opencv.bat
-├─ vendor/opencv/
-├─ src/index.template.html
-├─ build-standalone.bat
-├─ build-standalone.ps1
-├─ scripts/
-├─ components/
-└─ dist/
+Before / After
+      ↓
+ORB特徴点抽出
+      ↓
+BFMatcherで対応付け
+      ↓
+RANSAC Homography
+      ↓
+Perspective Warpで位置補正
+      ↓
+明るさ差を抑えた画像差分
+      ↓
+Threshold + Morphology
+      ↓
+無視範囲 + 小領域フィルタ
+      ↓
+変化箇所を強調表示
 ```
 
-## ライセンス
+専用Release Assetが利用できる場合は、このアプリに必要なOpenCV機能だけを含むprofileを使用します。
 
-アプリ本体: MIT License  
-OpenCV: Apache License 2.0。詳細は `THIRD_PARTY_NOTICES.md` を参照してください。
+## プライバシーと実行時通信
+
+比較処理が端末内で完結するように構成しています。
+
+- 選択した写真をアプリがアップロードしない
+- OpenCV JavaScript / WebAssemblyを生成HTMLへ内包
+- Content Security Policyに `connect-src 'none'` を設定
+- WASMは外部URLからfetchせず、埋め込みデータから直接初期化
+- 分析ツールや外部APIを比較処理に使用しない
+- After撮影ガイドは、ユーザーが明示的に開いて権限を許可したときだけ `getUserMedia` を使用
+
+GitHub Pages版では最初のHTML取得だけ通信が発生します。読み込み後、選択した写真をアプリがサーバーへ送ることはありません。完全オフラインで比較したい場合は `dist/index.html` をローカルで開けます。撮影ガイドの利用可否は、ブラウザーのHTTPS・カメラ権限ルールに依存します。
+
+詳細は [SECURITY.md](SECURITY.md) と [VERIFY_OFFLINE.md](VERIFY_OFFLINE.md) を参照してください。
+
+## 制限事項
+
+- 撮影位置が大きく変わると、手前と奥で視差が異なり、1枚のHomographyでは補正しきれない場合があります。
+- 無地の壁など模様や角が少ない写真では、位置合わせに必要な目印を十分に見つけられない場合があります。
+- 大部分が隠れている、または構図が大きく変わった写真は位置合わせに失敗する場合があります。
+- 強い影、照明、反射、動く葉、画面、時計などは変化として検出されることがあります。必要に応じて調整または無視範囲を使ってください。
+- 大きな写真は端末メモリを多く使います。スマホで不安定な場合は**写真の細かさ**を軽めにしてください。
+- After撮影ガイドにはカメラ対応・権限・通常はHTTPSなどのセキュアコンテキストが必要です。
+- 自動差分は確認を補助する機能です。測量、品質検査、安全に関わる最終判定の代わりには使用しないでください。
+
+## 依存関係
+
+| Library | Version | License | Purpose |
+| --- | ---: | --- | --- |
+| OpenCV | 5.0.0 | Apache-2.0 | 画像の位置合わせ、遠近補正、差分処理 |
+
+実際のruntimeは `opencv-release.json` で固定したbuilder Releaseから取得します。詳細は [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) を参照してください。
+
+## Contributing
+
+不具合報告や機能提案はGitHub Issuesから歓迎します。開発時の方針は [CONTRIBUTING.md](CONTRIBUTING.md) を参照してください。
+
+## License
+
+Copyright © 2026 ttomohisa
+
+[MIT License](LICENSE) で公開しています。
