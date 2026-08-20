@@ -1,0 +1,29 @@
+{
+    "$schema":  "./schemas/dependencies.schema.json",
+    "dependencies":  [
+                         {
+                             "id":  "opencv",
+                             "source":  "local",
+                             "root":  "vendor/opencv",
+                             "package":  "opencv",
+                             "version":  "5.0.0-browser-kitty-full",
+                             "license":  "Apache-2.0",
+                             "homepage":  "https://opencv.org/",
+                             "assets":  [
+                                            {
+                                                "key":  "runtime",
+                                                "path":  "opencv.js",
+                                                "mime":  "text/javascript",
+                                                "stripSourceMapComment":  true,
+                                                "compression":  "gzip"
+                                            },
+                                            {
+                                                "key":  "wasm",
+                                                "path":  "opencv_js.wasm",
+                                                "mime":  "application/wasm",
+                                                "compression":  "gzip"
+                                            }
+                                        ]
+                         }
+                     ]
+}

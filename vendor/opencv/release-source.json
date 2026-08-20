@@ -1,0 +1,11 @@
+{
+    "repository":  "ttomohisa/htmlapps-opencv-wasm-builder",
+    "tag":  "v1.0.0",
+    "asset":  "opencv-wasm-browser-kitty-full-v1.0.0.zip",
+    "profile":  "browser-kitty-full",
+    "preferredProfile":  "same-spot-diff",
+    "usedFallback":  true,
+    "downloadUrl":  "https://github.com/ttomohisa/htmlapps-opencv-wasm-builder/releases/download/v1.0.0/opencv-wasm-browser-kitty-full-v1.0.0.zip",
+    "opencvVersion":  "5.0.0",
+    "importedAtUtc":  "2026-08-20T08:22:34.8370741Z"
+}

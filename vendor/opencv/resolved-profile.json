@@ -1,0 +1,52 @@
+{
+  "profile": "browser-kitty-full",
+  "profileName": "browser-kitty-full",
+  "profileDescription": "Full classical-CV Browser Kitty runtime without DNN",
+  "opencvVersion": "5.0.0",
+  "opencvMajor": 5,
+  "requestedComponents": [
+    "core",
+    "imgproc",
+    "features",
+    "geometry",
+    "calibration",
+    "video",
+    "markers",
+    "stitching"
+  ],
+  "resolvedComponents": [
+    "core",
+    "imgproc",
+    "features",
+    "geometry",
+    "calibration",
+    "video",
+    "markers",
+    "stitching"
+  ],
+  "opencvModules": [
+    "core",
+    "imgproc",
+    "features",
+    "geometry",
+    "calib",
+    "video",
+    "objdetect"
+  ],
+  "buildList": [
+    "core",
+    "imgproc",
+    "features",
+    "geometry",
+    "calib",
+    "video",
+    "objdetect",
+    "js"
+  ],
+  "warnings": [
+    "Native cv.Stitcher is not exported by the standard OpenCV.js bindings; this component provides the feature/homography/warp primitives needed to implement stitching in JavaScript."
+  ],
+  "simd": true,
+  "threads": false,
+  "separateWasm": true
+}

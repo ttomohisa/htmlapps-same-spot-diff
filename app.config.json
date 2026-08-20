@@ -1,0 +1,26 @@
+{
+  "$schema": "./schemas/app-config.schema.json",
+  "name": "Same Spot Diff",
+  "nameJa": "Same Spot Diff",
+  "slug": "same-spot-diff",
+  "version": "1.0.0",
+  "description": "Align two photos automatically and highlight what changed, entirely in the browser.",
+  "descriptionJa": "撮影位置のズレを自動補正し、2枚の写真で変化した場所だけをブラウザー内で見つけます。",
+  "defaultLanguage": "auto",
+  "repository": {
+    "owner": "ttomohisa",
+    "name": "htmlapps-same-spot-diff"
+  },
+  "build": {
+    "output": "dist/index.html",
+    "blockRuntimeNetwork": true,
+    "selfExtract": {
+      "enabled": true,
+      "output": "dist/index.self-extract.html"
+    },
+    "sizeBudget": {
+      "readableWarningMb": 18,
+      "selfExtractWarningMb": 10
+    }
+  }
+}

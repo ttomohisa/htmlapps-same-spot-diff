@@ -1,0 +1,66 @@
+{
+  "profile": "browser-kitty-full",
+  "profileName": "browser-kitty-full",
+  "profileDescription": "Full classical-CV Browser Kitty runtime without DNN",
+  "opencvVersion": "5.0.0",
+  "opencvMajor": 5,
+  "requestedComponents": [
+    "core",
+    "imgproc",
+    "features",
+    "geometry",
+    "calibration",
+    "video",
+    "markers",
+    "stitching"
+  ],
+  "resolvedComponents": [
+    "core",
+    "imgproc",
+    "features",
+    "geometry",
+    "calibration",
+    "video",
+    "markers",
+    "stitching"
+  ],
+  "opencvModules": [
+    "core",
+    "imgproc",
+    "features",
+    "geometry",
+    "calib",
+    "video",
+    "objdetect"
+  ],
+  "buildList": [
+    "core",
+    "imgproc",
+    "features",
+    "geometry",
+    "calib",
+    "video",
+    "objdetect",
+    "js"
+  ],
+  "warnings": [
+    "Native cv.Stitcher is not exported by the standard OpenCV.js bindings; this component provides the feature/homography/warp primitives needed to implement stitching in JavaScript."
+  ],
+  "simd": true,
+  "threads": false,
+  "separateWasm": true,
+  "builder": "htmlapps-opencv-wasm-builder",
+  "builderVersion": "1.0.0",
+  "opencvCommit": "40738fb16ceddb5fb3fea747585f7ce6abb0605b",
+  "emsdkVersion": "6.0.6",
+  "files": {
+    "javascript": {
+      "name": "opencv.js",
+      "sha256": "af400d28d3b573bd91ea9aa37064802661e349f007ffc5695dd9e9b1eaada19e"
+    },
+    "wasm": {
+      "name": "opencv_js.wasm",
+      "sha256": "98782607a3b43de1e5a61f1cbb6f924c97a497abf09d8fcac4c9915d58ef76f4"
+    }
+  }
+}

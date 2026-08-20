@@ -1,0 +1,8 @@
+{
+  "repository": "ttomohisa/htmlapps-opencv-wasm-builder",
+  "tag": "v1.0.0",
+  "profile": "same-spot-diff",
+  "preferredAssetTemplate": "opencv-wasm-same-spot-diff-{tag}.zip",
+  "fallbackProfile": "browser-kitty-full",
+  "fallbackAssetTemplate": "opencv-wasm-browser-kitty-full-{tag}.zip"
+}

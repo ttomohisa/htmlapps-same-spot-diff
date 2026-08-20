@@ -1,0 +1,1626 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="color-scheme" content="light">
+  <meta name="theme-color" content="#f5f5f2">
+  <!-- OpenCV's Embind runtime uses dynamic JS code generation, so unsafe-eval is required by this custom runtime. Runtime networking remains blocked. -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' data: blob:; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data: blob:; media-src 'self' data: blob:; worker-src 'self' blob:; connect-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+  <title>Same Spot Diff</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%2316624f'/%3E%3Crect x='13' y='16' width='26' height='31' rx='4' fill='none' stroke='white' stroke-width='4'/%3E%3Crect x='25' y='10' width='26' height='31' rx='4' fill='%2316624f' stroke='white' stroke-width='4'/%3E%3Cpath d='M29 27h18M38 18v18' stroke='%23ffdf6d' stroke-width='4' stroke-linecap='round'/%3E%3C/svg%3E">
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f5f5f2;
+      --surface: #ffffff;
+      --surface-muted: #f0f0ed;
+      --surface-hover: #e9e9e5;
+      --text: #20211f;
+      --muted: #666963;
+      --line: #dadbd6;
+      --line-strong: #bfc1ba;
+      --accent: #16624f;
+      --accent-hover: #0e503f;
+      --accent-soft: #e1f0ea;
+      --danger: #b3261e;
+      --warning: #9a6500;
+      --warning-soft: #fff5da;
+      --diff: #d93025;
+      --focus: #4d8bc7;
+      --shadow-sm: 0 1px 2px rgba(25, 28, 24, .08), 0 1px 6px rgba(25, 28, 24, .04);
+      --shadow-md: 0 12px 34px rgba(25, 28, 24, .10);
+      --radius: 12px;
+      --header-height: 66px;
+      --mobile-bar-height: 74px;
+    }
+    * { box-sizing: border-box; }
+    html { min-height: 100%; background: var(--bg); scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans JP", "Yu Gothic UI", "Hiragino Kaku Gothic ProN", Meiryo, sans-serif;
+      font-size: 15px;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+    }
+    button, input, select { font: inherit; }
+    button { color: inherit; }
+    button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-visible, [tabindex]:focus-visible {
+      outline: 3px solid color-mix(in srgb, var(--focus) 55%, transparent);
+      outline-offset: 2px;
+    }
+    .app-header {
+      position: sticky;
+      z-index: 30;
+      top: 0;
+      min-height: var(--header-height);
+      border-bottom: 1px solid color-mix(in srgb, var(--line) 82%, transparent);
+      background: color-mix(in srgb, var(--bg) 92%, transparent);
+      backdrop-filter: blur(16px) saturate(1.2);
+    }
+    .header-inner {
+      width: min(1180px, 100%);
+      min-height: var(--header-height);
+      margin: 0 auto;
+      padding: 10px clamp(14px, 2.8vw, 30px);
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
+    .brand-mark {
+      display: grid;
+      place-items: center;
+      width: 38px;
+      height: 38px;
+      flex: 0 0 auto;
+      border-radius: 11px;
+      background: var(--accent);
+      color: #fff;
+      box-shadow: var(--shadow-sm);
+    }
+    .brand-mark svg { width: 21px; height: 21px; display: block; }
+    .brand-copy { min-width: 0; }
+    .brand-name { margin: 0; font-size: 17px; line-height: 1.2; letter-spacing: .01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .version-badge { display: inline-flex; margin-left: 7px; padding: 1px 6px; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); background: var(--surface-muted); font-size: 10px; font-weight: 650; vertical-align: 2px; }
+    .brand-meta { margin: 2px 0 0; color: var(--muted); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .header-actions { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+    .language-button, .header-icon-button {
+      padding: 5px 1px;
+      border: 0;
+      background: transparent;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 750;
+      cursor: pointer;
+    }
+    .language-button:hover, .header-icon-button:hover { color: var(--text); }
+    .header-icon-button { display: grid; place-items: center; }
+    .header-icon-button svg { width: 20px; height: 20px; }
+    .main { width: min(1180px, 100%); margin: 0 auto; padding: 22px clamp(14px, 2.8vw, 30px) 54px; }
+    .page-intro { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; padding: 0 2px 18px; }
+    .page-intro h1 { margin: 0; font-size: clamp(22px, 3vw, 28px); line-height: 1.25; letter-spacing: -.025em; }
+    .page-intro p { margin: 6px 0 0; max-width: 780px; color: var(--muted); font-size: 13px; }
+    .local-badge { display: inline-flex; align-items: center; gap: 7px; flex: 0 0 auto; margin-top: 3px; padding: 7px 10px; border: 1px solid color-mix(in srgb, var(--accent) 24%, var(--line)); border-radius: 999px; color: var(--accent); background: var(--accent-soft); font-size: 12px; font-weight: 700; white-space: nowrap; }
+    .local-badge svg { width: 15px; height: 15px; }
+    .section-card { margin: 0 0 16px; padding: 18px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); box-shadow: var(--shadow-sm); scroll-margin-top: calc(var(--header-height) + 12px); }
+    .section-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 14px; }
+    .section-head h2 { margin: 0; font-size: 18px; letter-spacing: -.02em; }
+    .section-head p { margin: 4px 0 0; color: var(--muted); font-size: 12px; }
+    .button { min-height: 40px; padding: 8px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); font-weight: 730; cursor: pointer; transition: border-color .16s ease, background .16s ease, transform .16s ease; }
+    .button:hover:not(:disabled) { border-color: var(--line-strong); background: var(--surface-hover); }
+    .button:active:not(:disabled) { transform: translateY(1px); }
+    .button.primary { border-color: var(--accent); background: var(--accent); color: #fff; }
+    .button.primary:hover:not(:disabled) { border-color: var(--accent-hover); background: var(--accent-hover); }
+    .button.ghost { border-color: transparent; background: transparent; color: var(--muted); }
+    .button.danger-text { color: var(--danger); }
+    .button:disabled { opacity: .42; cursor: default; }
+    .button svg { width: 17px; height: 17px; vertical-align: -3px; margin-right: 6px; }
+    .source-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; }
+    .source-card { min-width: 0; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; background: #fafaf8; }
+    .source-card-head { display: flex; align-items: center; gap: 9px; padding: 11px 12px; border-bottom: 1px solid var(--line); background: var(--surface); }
+    .source-badge { display: grid; place-items: center; width: 25px; height: 25px; border-radius: 8px; background: var(--surface-muted); color: var(--accent); font-size: 11px; font-weight: 850; }
+    .source-card-title { font-size: 13px; font-weight: 780; }
+    .source-card-subtitle { margin-left: auto; color: var(--muted); font-size: 10px; }
+    .dropzone { position: relative; min-height: 260px; display: grid; place-items: center; padding: 12px; cursor: pointer; background: linear-gradient(180deg, #fbfbf9, #f5f5f1); }
+    .dropzone.is-dragging { box-shadow: inset 0 0 0 2px var(--accent); background: var(--accent-soft); }
+    .drop-empty { max-width: 260px; text-align: center; color: var(--muted); }
+    .drop-empty svg { width: 34px; height: 34px; color: var(--accent); }
+    .drop-empty strong { display: block; margin-top: 8px; color: var(--text); font-size: 13px; }
+    .drop-empty span { display: block; margin-top: 3px; font-size: 11px; }
+    .source-preview { display: none; width: 100%; max-height: 360px; object-fit: contain; border-radius: 9px; background: #e9e9e5; }
+    .source-card.has-image .source-preview { display: block; }
+    .source-card.has-image .drop-empty { display: none; }
+    .source-meta { display: none; padding: 10px 12px 12px; border-top: 1px solid var(--line); background: var(--surface); }
+    .source-card.has-image .source-meta { display: block; }
+    .source-file { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; font-weight: 700; }
+    .source-detail { margin-top: 2px; color: var(--muted); font-size: 10px; }
+    .source-actions { display: flex; gap: 7px; margin-top: 8px; }
+    .source-actions .button { min-height: 34px; padding: 5px 9px; font-size: 11px; }
+    .after-guide-row { padding: 0 12px 12px; background: var(--surface); }
+    .camera-guide-button { width: 100%; min-height: 48px; display: flex; align-items: center; gap: 10px; padding: 9px 11px; border: 1px solid color-mix(in srgb, var(--accent) 26%, var(--line)); border-radius: 11px; background: color-mix(in srgb, var(--accent-soft) 48%, var(--surface)); color: var(--text); text-align: left; cursor: pointer; }
+    .camera-guide-button:hover:not(:disabled) { border-color: color-mix(in srgb, var(--accent) 52%, var(--line)); background: var(--accent-soft); }
+    .camera-guide-button:disabled { opacity: .46; cursor: default; }
+    .camera-guide-icon { width: 34px; height: 34px; flex: 0 0 auto; display: grid; place-items: center; border-radius: 10px; background: var(--surface); color: var(--accent); }
+    .camera-guide-icon svg { width: 19px; height: 19px; }
+    .camera-guide-copy { min-width: 0; display: grid; gap: 1px; }
+    .camera-guide-copy strong { font-size: 11px; line-height: 1.3; }
+    .camera-guide-copy small { color: var(--muted); font-size: 9px; line-height: 1.4; }
+
+    .hidden-input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+    .source-tools { display: flex; justify-content: center; gap: 8px; margin-top: 12px; }
+    .compare-panel { margin-top: 14px; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 14px; padding: 13px 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-muted); }
+    .phase-line { display: flex; align-items: center; gap: 9px; min-width: 0; }
+    .phase-dot { width: 9px; height: 9px; flex: 0 0 auto; border-radius: 50%; background: var(--line-strong); }
+    .phase-dot.ready, .phase-dot.result { background: var(--accent); }
+    .phase-dot.processing, .phase-dot.loading-runtime { background: #c48612; animation: pulse 1s ease-in-out infinite; }
+    .phase-dot.error { background: var(--danger); }
+    .phase-copy { min-width: 0; }
+    .phase-title { font-size: 12px; font-weight: 780; }
+    .phase-detail { margin-top: 1px; color: var(--muted); font-size: 10px; overflow-wrap: anywhere; }
+    @keyframes pulse { 50% { opacity: .35; transform: scale(.82); } }
+    .settings-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+    .setting { padding: 13px; border: 1px solid var(--line); border-radius: 12px; background: #fbfbf9; }
+    .setting-top { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+    .setting-label { font-size: 12px; font-weight: 780; }
+    .setting-value { color: var(--accent); font-size: 11px; font-weight: 800; }
+    .setting-help { margin: 4px 0 9px; min-height: 32px; color: var(--muted); font-size: 10px; line-height: 1.55; }
+    input[type="range"] { width: 100%; accent-color: var(--accent); }
+    .range-ends { display: flex; justify-content: space-between; margin-top: -1px; color: var(--muted); font-size: 9px; }
+    details.advanced { margin-top: 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); overflow: hidden; }
+    details.advanced summary { padding: 11px 13px; cursor: pointer; font-size: 12px; font-weight: 750; }
+    .advanced-body { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; padding: 0 13px 13px; }
+    .check-row, .select-row { min-height: 44px; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 9px 10px; border-radius: 10px; background: var(--surface-muted); font-size: 11px; }
+    .check-row input { width: 18px; height: 18px; accent-color: var(--accent); }
+    .select-row select { max-width: 130px; min-height: 34px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); padding: 4px 7px; color: var(--text); }
+    .result-empty { min-height: 320px; display: grid; place-items: center; padding: 30px; border: 1px dashed var(--line-strong); border-radius: 13px; background: #fafaf8; text-align: center; color: var(--muted); }
+    .result-empty svg { width: 40px; height: 40px; color: var(--line-strong); }
+    .result-empty strong { display: block; margin-top: 9px; color: var(--text); font-size: 13px; }
+    .result-shell { display: none; }
+    .section-card.has-result .result-empty { display: none; }
+    .section-card.has-result .result-shell { display: block; }
+    .stats-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-bottom: 12px; }
+    .stat { padding: 9px 10px; border-radius: 10px; background: var(--surface-muted); text-align: center; }
+    .stat-value { display: block; font-size: 15px; font-weight: 800; line-height: 1.2; }
+    .stat-label { display: block; margin-top: 2px; color: var(--muted); font-size: 9px; }
+    .view-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
+    .segmented { display: flex; flex-wrap: wrap; gap: 5px; }
+    .view-button { min-height: 34px; padding: 5px 9px; border: 1px solid var(--line); border-radius: 9px; background: var(--surface); color: var(--muted); font-size: 10px; font-weight: 750; cursor: pointer; }
+    .view-button[aria-pressed="true"] { border-color: color-mix(in srgb, var(--accent) 42%, var(--line)); background: var(--accent-soft); color: var(--accent); }
+    .view-note { color: var(--muted); font-size: 10px; }
+    .result-stage { position: relative; overflow: hidden; min-height: 320px; border: 1px solid var(--line); border-radius: 13px; background: #e6e6e2; touch-action: none; }
+    .result-stage-content { position: absolute; inset: 0 auto auto 0; transform-origin: 0 0; will-change: transform; }
+    #resultCanvas { display: block; width: 100%; height: 100%; background: #ddd; }
+    .overlay-control { display: none; align-items: center; gap: 8px; margin-top: 9px; padding: 9px 10px; border-radius: 10px; background: var(--surface-muted); }
+    .overlay-control.show { display: flex; }
+    .overlay-control label { flex: 0 0 auto; color: var(--muted); font-size: 10px; font-weight: 700; }
+    .overlay-control input { flex: 1 1 auto; }
+    .result-summary { margin: 10px 0 0; color: var(--muted); font-size: 11px; }
+    .export-row { display: flex; align-items: end; justify-content: space-between; gap: 10px; margin-top: 12px; }
+    .export-field { display: grid; gap: 5px; min-width: min(100%, 330px); }
+    .export-label { color: var(--muted); font-size: 10px; font-weight: 700; }
+    .filename-control { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; overflow: hidden; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+    .filename-control:focus-within { border-color: var(--focus); box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus) 20%, transparent); }
+    .filename-input { width: 100%; min-width: 0; min-height: 40px; padding: 8px 10px; border: 0; outline: 0; background: transparent; color: var(--text); }
+    .filename-extension { padding: 0 10px; color: var(--muted); font-size: 11px; user-select: none; }
+    .error-box { display: none; margin-top: 10px; padding: 10px 12px; border: 1px solid color-mix(in srgb, var(--danger) 35%, var(--line)); border-radius: 10px; background: #fff4f2; color: #7c231d; font-size: 11px; }
+    .error-box.show { display: block; }
+    .app-toast { position: fixed; right: 18px; bottom: calc(18px + env(safe-area-inset-bottom)); z-index: 90; display: flex; align-items: center; gap: 12px; max-width: min(420px, calc(100vw - 36px)); padding: 10px 12px 10px 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--text); box-shadow: var(--shadow-md); opacity: 0; transform: translateY(12px); pointer-events: none; transition: opacity .18s ease, transform .18s ease; }
+    .app-toast.show { opacity: 1; transform: translateY(0); pointer-events: auto; }
+    .app-toast[data-tone="success"] { border-color: color-mix(in srgb, var(--accent) 34%, var(--line)); }
+    .app-toast[data-tone="warning"] { border-color: #c58a24; }
+    .app-toast-message { min-width: 0; flex: 1 1 auto; font-size: 12px; line-height: 1.45; overflow-wrap: anywhere; }
+    .app-toast-action { flex: 0 0 auto; min-height: 34px; padding: 5px 8px; border: 0; border-radius: 8px; background: transparent; color: var(--accent); font-size: 11px; font-weight: 800; cursor: pointer; }
+    .app-toast-action[hidden] { display: none; }
+    .camera-guide-dialog { width: min(760px, calc(100% - 20px)); max-height: calc(100dvh - 20px); }
+    .camera-guide-dialog .dialog-body { padding: 14px; }
+    .camera-guide-intro { margin: 0 0 10px; color: var(--muted); font-size: 11px; line-height: 1.55; }
+    .camera-guide-stage { position: relative; width: min(100%, 620px); margin: 0 auto; aspect-ratio: 3 / 4; max-height: calc(100dvh - 300px); overflow: hidden; border-radius: 14px; background: #111; box-shadow: inset 0 0 0 1px rgba(255,255,255,.12); }
+    .camera-guide-stage video, .camera-guide-stage img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+    .camera-guide-stage video { background: #111; }
+    .camera-guide-before { pointer-events: none; opacity: .46; }
+    .camera-guide-grid { position: absolute; inset: 0; pointer-events: none; opacity: .38; background-image: linear-gradient(to right, transparent 33.1%, rgba(255,255,255,.65) 33.2%, rgba(255,255,255,.65) 33.5%, transparent 33.6%, transparent 66.4%, rgba(255,255,255,.65) 66.5%, rgba(255,255,255,.65) 66.8%, transparent 66.9%), linear-gradient(to bottom, transparent 33.1%, rgba(255,255,255,.65) 33.2%, rgba(255,255,255,.65) 33.5%, transparent 33.6%, transparent 66.4%, rgba(255,255,255,.65) 66.5%, rgba(255,255,255,.65) 66.8%, transparent 66.9%); }
+    .camera-guide-status { position: absolute; left: 12px; right: 12px; bottom: 12px; padding: 8px 10px; border-radius: 10px; background: rgba(20,22,20,.72); color: #fff; font-size: 10px; line-height: 1.45; backdrop-filter: blur(8px); }
+    .camera-guide-controls { width: min(100%, 620px); margin: 10px auto 0; display: grid; gap: 8px; }
+    .camera-guide-opacity { display: grid; grid-template-columns: auto minmax(120px, 1fr) auto; align-items: center; gap: 9px; padding: 9px 10px; border-radius: 10px; background: var(--surface-muted); }
+    .camera-guide-opacity label { color: var(--muted); font-size: 9px; font-weight: 750; }
+    .camera-guide-opacity output { min-width: 36px; color: var(--accent); font-size: 10px; font-weight: 800; text-align: right; }
+    .camera-guide-options { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+    .camera-guide-tip { color: var(--muted); font-size: 9px; line-height: 1.45; }
+    .camera-guide-actions { width: min(100%, 620px); margin: 12px auto 0; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px; }
+    .camera-capture-button { min-height: 50px; }
+    .camera-guide-note { width: min(100%, 620px); margin: 8px auto 0; color: var(--muted); font-size: 9px; line-height: 1.5; text-align: center; }
+    dialog { width: min(640px, calc(100% - 28px)); max-height: min(780px, calc(100dvh - 28px)); padding: 0; overflow: hidden; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); color: var(--text); box-shadow: var(--shadow-md); }
+    dialog::backdrop { background: rgba(15, 17, 14, .52); backdrop-filter: blur(4px); }
+    .dialog-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 18px; border-bottom: 1px solid var(--line); }
+    .dialog-header h2 { margin: 0; font-size: 17px; }
+    .dialog-close { display: grid; place-items: center; width: 36px; height: 36px; padding: 0; border: 0; border-radius: 10px; background: transparent; cursor: pointer; }
+    .dialog-close:hover { background: var(--surface-hover); }
+    .dialog-close svg { width: 19px; height: 19px; }
+    .dialog-body { padding: 20px 20px 28px; overflow: auto; max-height: calc(100dvh - 102px); }
+    .dialog-body h3 { margin: 24px 0 8px; padding-top: 18px; border-top: 1px solid var(--line); font-size: 13px; }
+    .dialog-body h3:first-child { margin-top: 0; padding-top: 0; border-top: 0; }
+    .dialog-body p, .dialog-body li { color: var(--muted); font-size: 12px; line-height: 1.7; }
+    .dialog-body ol, .dialog-body ul { margin: 8px 0 0; padding-left: 22px; }
+    .dialog-body li + li { margin-top: 6px; }
+    .dialog-note { margin-top: 12px; padding: 11px 12px; border: 1px solid color-mix(in srgb, var(--accent) 22%, var(--line)); border-radius: 10px; background: var(--accent-soft); color: var(--text) !important; }
+    .build-info { margin-top: 16px; padding: 10px 12px; border-radius: 10px; background: var(--surface-muted); color: var(--muted); font-size: 10px; }
+    footer { width: min(1180px, 100%); margin: 0 auto; padding: 0 clamp(14px, 2.8vw, 30px) 34px; color: var(--muted); font-size: 11px; }
+    .mobile-bar { display: none; }
+    .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+    @media (max-width: 820px) {
+      .page-intro { flex-direction: column; gap: 10px; }
+      .local-badge { align-self: flex-start; }
+      .source-grid { grid-template-columns: 1fr; }
+      .dropzone { min-height: 220px; }
+      .settings-grid { grid-template-columns: 1fr; }
+      .stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 600px) {
+      :root { --header-height: 58px; }
+      body { padding-bottom: calc(var(--mobile-bar-height) + env(safe-area-inset-bottom)); }
+      .header-inner { padding-block: 8px; }
+      .brand-mark { width: 34px; height: 34px; border-radius: 10px; }
+      .brand-name { font-size: 15px; }
+      .brand-meta { display: none; }
+      .main { padding-top: 16px; padding-bottom: 26px; }
+      .page-intro { padding-bottom: 13px; }
+      .section-card { padding: 13px; border-radius: 14px; }
+      .source-card-subtitle { display: none; }
+      .source-preview { max-height: 300px; }
+      .compare-panel { grid-template-columns: 1fr; }
+      #compareButton { display: inline-flex; width: 100%; min-height: 46px; }
+      .advanced-body { grid-template-columns: 1fr; }
+      .view-toolbar { align-items: stretch; flex-direction: column; }
+      .segmented { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+      .view-button { padding-inline: 4px; }
+      #resultCanvas { max-height: 62vh; }
+      .export-row { align-items: stretch; flex-direction: column; }
+      .export-field { width: 100%; }
+      .export-row > .button { width: 100%; }
+      .app-toast { left: 12px; right: 12px; bottom: calc(var(--mobile-bar-height) + 10px + env(safe-area-inset-bottom)); max-width: none; }
+      .mobile-bar { position: fixed; z-index: 80; left: 0; right: 0; bottom: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; padding: 6px 10px calc(6px + env(safe-area-inset-bottom)); border-top: 1px solid color-mix(in srgb, var(--line) 82%, transparent); background: rgba(255,255,255,.95); box-shadow: 0 -8px 24px rgba(20,22,20,.06); backdrop-filter: blur(18px) saturate(1.35); }
+      .mobile-item { min-width: 0; min-height: 54px; padding: 5px 4px; border: 0; border-radius: 12px; background: transparent; color: var(--muted); display: grid; place-items: center; align-content: center; gap: 3px; font-size: 9px; font-weight: 750; line-height: 1.15; cursor: pointer; }
+      .mobile-item svg { width: 20px; height: 20px; }
+      .mobile-item.primary:not(:disabled), .mobile-item.is-active { color: var(--accent); background: var(--accent-soft); }
+      .mobile-item:disabled { opacity: .35; cursor: default; }
+      dialog { width: calc(100% - 20px); max-height: calc(100dvh - 20px); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; }
+    }
+
+    /* UX refinement: task-first flow and clearer result viewing */
+    .result-card { padding: 20px; }
+    .result-empty { min-height: 220px; }
+    .result-head { margin-bottom: 16px; }
+    .result-overview { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-bottom: 10px; }
+    .overview-item { min-width: 0; padding: 12px 13px; border: 1px solid var(--line); border-radius: 12px; background: #fbfbf9; }
+    .overview-label { display: block; color: var(--muted); font-size: 10px; font-weight: 700; }
+    .overview-value { display: block; margin-top: 3px; color: var(--text); font-size: 17px; font-weight: 820; line-height: 1.2; }
+    .overview-unit { color: var(--muted); font-size: 11px; font-weight: 700; }
+    .result-summary-primary { margin: 0 0 14px; padding: 10px 12px; border-radius: 10px; background: var(--accent-soft); color: color-mix(in srgb, var(--text) 84%, var(--accent)); font-size: 11px; }
+    .result-view-picker { margin-bottom: 10px; padding: 13px; border: 1px solid var(--line); border-radius: 13px; background: var(--surface); }
+    .view-picker-title { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 9px; }
+    .view-picker-title strong { font-size: 12px; }
+    .view-picker-title span { color: var(--muted); font-size: 9px; }
+    .view-choice-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+    .view-choice { min-width: 0; min-height: 66px; display: flex; align-items: center; gap: 10px; padding: 10px 11px; border: 1px solid var(--line); border-radius: 11px; background: #fbfbf9; color: var(--text); text-align: left; cursor: pointer; transition: border-color .16s ease, background .16s ease, transform .16s ease; }
+    .view-choice:hover { border-color: var(--line-strong); background: var(--surface-hover); }
+    .view-choice:active { transform: translateY(1px); }
+    .view-choice[aria-pressed="true"] { border-color: color-mix(in srgb, var(--accent) 52%, var(--line)); background: var(--accent-soft); }
+    .view-choice-icon { width: 36px; height: 36px; flex: 0 0 auto; display: grid; place-items: center; border-radius: 10px; background: var(--surface); color: var(--accent); }
+    .view-choice[aria-pressed="true"] .view-choice-icon { background: color-mix(in srgb, #fff 68%, var(--accent-soft)); }
+    .view-choice-icon svg { width: 20px; height: 20px; }
+    .view-choice-copy { min-width: 0; display: grid; gap: 2px; }
+    .view-choice-copy strong { font-size: 12px; line-height: 1.3; }
+    .view-choice-copy small { color: var(--muted); font-size: 9px; line-height: 1.45; }
+    .source-view-details { margin-top: 8px; border-top: 1px solid var(--line); }
+    .source-view-details summary { padding: 10px 2px 1px; cursor: pointer; list-style-position: inside; color: var(--muted); }
+    .source-view-details summary > span { display: inline-flex; align-items: baseline; gap: 8px; }
+    .source-view-details summary strong { color: var(--text); font-size: 10px; }
+    .source-view-details summary small { color: var(--muted); font-size: 9px; }
+    .source-view-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; padding-top: 8px; }
+    .secondary-view { min-height: 48px; display: grid; justify-items: start; gap: 2px; padding: 8px 10px; text-align: left; }
+    .secondary-view strong { font-size: 10px; }
+    .secondary-view span { color: var(--muted); font-size: 8px; font-weight: 600; }
+    .view-explainer { min-height: 17px; margin: 0 2px 7px; color: var(--muted); font-size: 10px; }
+    .result-stage { box-shadow: inset 0 0 0 1px rgba(255,255,255,.25); }
+    .stage-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 8px 0 0; }
+    .stage-toolbar-copy { display: grid; gap: 1px; min-width: 0; }
+    .stage-toolbar-copy strong { font-size: 10px; }
+    .stage-toolbar-copy span { color: var(--muted); font-size: 9px; }
+    .zoom-help-mobile { display: none; }
+    .stage-toolbar-actions { display: inline-flex; gap: 6px; flex-wrap: wrap; }
+    .mini-button { min-height: 32px; padding: 5px 9px; border: 1px solid var(--line); border-radius: 9px; background: var(--surface); color: var(--text); font-size: 10px; font-weight: 750; cursor: pointer; }
+    .mini-button:hover:not(:disabled) { background: var(--surface-hover); }
+    .mini-button.active { border-color: color-mix(in srgb, var(--accent) 48%, var(--line)); background: var(--accent-soft); color: var(--accent); }
+    .zoom-badge { min-width: 48px; display: inline-grid; place-items: center; padding: 0 8px; border-radius: 999px; background: var(--surface-muted); color: var(--muted); font-size: 10px; font-weight: 800; }
+    .slider-control.show, .blink-control.show { display: grid; }
+    .slider-control, .blink-control { display: none; align-items: center; gap: 8px; margin-top: 9px; padding: 9px 10px; border-radius: 10px; background: var(--surface-muted); }
+    .slider-control { grid-template-columns: auto minmax(120px, 1fr) auto auto; }
+    .blink-control { grid-template-columns: 1fr auto auto; }
+    .control-hint { color: var(--muted); font-size: 9px; font-weight: 700; }
+    .control-value { min-width: 34px; color: var(--accent); font-size: 10px; font-weight: 800; text-align: right; }
+    .blink-select { min-height: 34px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); padding: 4px 7px; color: var(--text); }
+    .ignore-tools { margin-top: 10px; padding: 10px; border: 1px solid color-mix(in srgb, var(--accent) 14%, var(--line)); border-radius: 10px; background: color-mix(in srgb, var(--surface) 72%, var(--accent-soft)); }
+    .ignore-tools-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
+    .ignore-tools-copy { min-width: 0; display: grid; gap: 1px; }
+    .visibility-switch { flex: 0 0 auto; min-height: 30px; display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px; border: 0; border-radius: 999px; background: var(--surface-muted); color: var(--muted); font-size: 9px; font-weight: 760; cursor: pointer; }
+    .visibility-switch:hover:not(:disabled) { background: var(--surface-hover); color: var(--text); }
+    .visibility-switch svg { width: 14px; height: 14px; }
+    .visibility-switch[aria-checked="false"] { background: color-mix(in srgb, var(--surface-muted) 62%, transparent); color: color-mix(in srgb, var(--muted) 70%, transparent); }
+    .visibility-switch:disabled { opacity: .4; cursor: default; }
+
+    .ignore-tools-head strong { font-size: 10px; }
+    .ignore-tools-head span { color: var(--muted); font-size: 9px; line-height: 1.45; }
+    .ignore-tools-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+    .ignore-tools-note { margin: 7px 0 0; color: var(--muted); font-size: 9px; line-height: 1.45; }
+    .ignore-chip { display: inline-flex; align-items: center; gap: 6px; margin-top: 7px; padding: 5px 8px; border-radius: 999px; background: var(--surface); color: var(--muted); font-size: 9px; font-weight: 700; }
+    .overlay-control.show { display: grid; grid-template-columns: auto minmax(120px, 1fr) auto auto; }
+    .overlay-side-label { color: var(--muted); font-size: 9px; font-weight: 750; }
+    .overlay-percent { min-width: 34px; color: var(--accent); font-size: 10px; font-weight: 800; text-align: right; }
+    .stage-mode-hint { margin: 6px 2px 0; color: var(--muted); font-size: 9px; }
+    .technical-details { margin-top: 10px; border-top: 1px solid var(--line); }
+    .technical-details summary { padding: 9px 2px 0; color: var(--muted); font-size: 10px; font-weight: 700; cursor: pointer; }
+    .technical-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; padding-top: 8px; }
+    .technical-grid > div { display: grid; gap: 2px; padding: 8px 9px; border-radius: 9px; background: var(--surface-muted); }
+    .technical-grid span { color: var(--muted); font-size: 8px; }
+    .technical-grid strong { font-size: 10px; }
+    .tuning-card { background: color-mix(in srgb, var(--surface) 78%, var(--bg)); box-shadow: none; }
+    .tuning-head { margin-bottom: 12px; }
+    .section-kicker { width: fit-content; margin-bottom: 3px; padding: 2px 7px; border-radius: 999px; background: var(--surface-muted); color: var(--muted); font-size: 9px; font-weight: 760; }
+    .setting { background: var(--surface); }
+    .compare-panel { border-color: color-mix(in srgb, var(--accent) 18%, var(--line)); background: color-mix(in srgb, var(--accent-soft) 46%, var(--surface-muted)); }
+    #compareButton { min-width: 158px; min-height: 44px; }
+    .source-card-head { min-height: 49px; }
+    .source-card-title { font-size: 12px; }
+    .source-card-subtitle { padding: 2px 7px; border-radius: 999px; background: var(--surface-muted); font-size: 9px; }
+    .dropzone { min-height: 240px; }
+    .export-row-refined { padding-top: 2px; }
+    @media (max-width: 820px) {
+      .result-overview { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    }
+    @media (max-width: 600px) {
+      .section-head h2 { font-size: 17px; }
+      .section-head p { max-width: 32rem; }
+      .dropzone { min-height: 190px; }
+      .source-card.has-image .dropzone { min-height: 0; padding: 8px; }
+      .source-preview { max-height: 250px; }
+      .after-guide-row { padding: 0 8px 9px; }
+      .camera-guide-button { min-height: 52px; }
+      .camera-guide-dialog { width: calc(100% - 10px); max-height: calc(100dvh - 10px); }
+      .camera-guide-dialog .dialog-header { padding: 12px 13px; }
+      .camera-guide-dialog .dialog-body { padding: 10px; }
+      .camera-guide-stage { max-height: calc(100dvh - 285px); border-radius: 12px; }
+      .camera-guide-actions { grid-template-columns: 1fr; }
+      .camera-guide-actions .button { width: 100%; }
+      .ignore-tools-head { align-items: center; }
+      .visibility-switch { min-height: 32px; }
+
+      .source-tools { margin-top: 9px; }
+      .result-card { padding: 13px; }
+      .result-empty { min-height: 170px; padding: 20px 14px; }
+      .result-overview { gap: 5px; }
+      .overview-item { padding: 9px 7px; text-align: center; }
+      .overview-label { font-size: 8px; }
+      .overview-value { font-size: 14px; }
+      .overview-unit { font-size: 8px; }
+      .result-view-picker { padding: 10px; }
+      .view-picker-title { display: grid; gap: 1px; }
+      .view-choice-grid { grid-template-columns: 1fr; }
+      .slider-control.show { grid-template-columns: auto minmax(90px, 1fr) auto; }
+      .control-value { grid-column: 1 / -1; justify-self: center; }
+      .blink-control.show { grid-template-columns: 1fr; }
+      .stage-toolbar { align-items: stretch; flex-direction: column; }
+      .stage-toolbar-actions { width: 100%; justify-content: stretch; }
+      .stage-toolbar-actions .mini-button { flex: 1 1 auto; }
+      .zoom-help-mobile { display: inline; }
+      .zoom-badge { align-self: center; }
+      .ignore-tools-actions .mini-button { flex: 1 1 calc(50% - 6px); }
+      .view-choice { min-height: 58px; }
+      .view-choice-copy strong { font-size: 11px; }
+      .source-view-details summary > span { display: inline-grid; gap: 0; vertical-align: middle; }
+      .source-view-options { grid-template-columns: 1fr; }
+      .overlay-control.show { grid-template-columns: auto minmax(90px, 1fr) auto; }
+      .overlay-percent { grid-column: 1 / -1; justify-self: center; }
+      #resultCanvas { max-height: 58vh; }
+      .technical-grid { grid-template-columns: 1fr 1fr; }
+      .tuning-card { padding-bottom: 12px; }
+    }
+
+    /* UX polish: responsive guidance, plain language, inline result tuning */
+    .compare-instruction-mobile { display: none; }
+    .result-adjust-details { margin-top: 10px; border: 1px solid color-mix(in srgb, var(--accent) 18%, var(--line)); border-radius: 12px; background: color-mix(in srgb, var(--accent-soft) 28%, var(--surface)); overflow: hidden; }
+    .result-adjust-details > summary { min-height: 54px; display: flex; align-items: center; gap: 10px; padding: 10px 12px; cursor: pointer; list-style: none; user-select: none; }
+    .result-adjust-details > summary::-webkit-details-marker { display: none; }
+    .result-adjust-details > summary:hover { background: color-mix(in srgb, var(--accent-soft) 42%, transparent); }
+    .adjust-summary-icon { width: 34px; height: 34px; flex: 0 0 auto; display: grid; place-items: center; border-radius: 9px; background: var(--surface); color: var(--accent); }
+    .adjust-summary-icon svg { width: 19px; height: 19px; }
+    .adjust-summary-copy { min-width: 0; display: grid; gap: 1px; }
+    .adjust-summary-copy strong { font-size: 11px; }
+    .adjust-summary-copy small { color: var(--muted); font-size: 9px; line-height: 1.4; }
+    .adjust-summary-chevron { width: 24px; height: 24px; margin-left: auto; display: grid; place-items: center; color: var(--muted); transition: transform .16s ease; }
+    .adjust-summary-chevron svg { width: 18px; height: 18px; }
+    .result-adjust-details[open] .adjust-summary-chevron { transform: rotate(180deg); }
+    .result-adjust-body { padding: 0 12px 12px; border-top: 1px solid color-mix(in srgb, var(--accent) 13%, var(--line)); }
+    .compact-settings { padding-top: 11px; }
+    .compact-settings .setting { background: var(--surface); }
+    .compact-settings .setting-help { min-height: 0; }
+    .inline-advanced { margin-top: 9px; background: var(--surface); }
+    .inline-advanced .advanced-body { padding-bottom: 8px; }
+    .advanced-note { margin: 0; padding: 0 13px 11px; color: var(--muted); font-size: 9px; line-height: 1.5; }
+    .min-area-value { display: inline-block; margin-top: 4px; color: var(--muted); font-size: 9px; }
+    @media (max-width: 600px) {
+      .compare-instruction-desktop { display: none; }
+      .compare-instruction-mobile { display: inline; }
+      .result-adjust-details { margin-top: 8px; }
+      .result-adjust-details > summary { min-height: 52px; padding: 9px 10px; }
+      .result-adjust-body { padding: 0 10px 10px; }
+      .compact-settings { grid-template-columns: 1fr; gap: 8px; }
+      .compact-settings .setting { padding: 11px; }
+      .inline-advanced .advanced-body { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <header class="app-header">
+    <div class="header-inner">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="6" width="11" height="13" rx="2"/><rect x="9" y="3" width="11" height="13" rx="2"/><path d="M12 9h5M14.5 6.5v5"/></svg>
+        </div>
+        <div class="brand-copy">
+          <p class="brand-name"><span id="brandName">Same Spot Diff</span><span class="version-badge" id="versionBadge">v1.0.0</span></p>
+          <p class="brand-meta" data-i18n="brandMeta">写真のズレを合わせて変化を比較・端末内処理</p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <button class="language-button" id="languageButton" type="button" aria-label="Switch language">EN</button>
+        <button class="header-icon-button" id="helpButton" type="button" data-i18n-title="helpTitle" data-i18n-aria-label="helpTitle" title="使い方と注意事項" aria-label="使い方と注意事項">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.8 9a2.35 2.35 0 1 1 3.72 1.9c-.92.67-1.52 1.12-1.52 2.1"/><path d="M12 17h.01"/></svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="main">
+    <section class="page-intro" aria-labelledby="heroTitle">
+      <div>
+        <h1 id="heroTitle" data-i18n="introTitle">撮影位置のズレを直してから、変化を見つける</h1>
+        <p data-i18n="lead">Before / Afterの写真が少しずれていても、自動でズレを合わせて変わった場所だけを強調します。</p>
+      </div>
+      <div class="local-badge">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 5 6v5c0 4.6 2.8 8 7 10 4.2-2 7-5.4 7-10V6z"/><path d="m9 12 2 2 4-5"/></svg>
+        <span data-i18n="localBadge">画像を外部送信しません</span>
+      </div>
+    </section>
+
+    <!-- APP:BEGIN -->
+    <section class="section-card" id="sourceSection" aria-labelledby="sourceTitle">
+      <div class="section-head">
+        <div>
+          <h2 id="sourceTitle" data-i18n="sourceTitle">1. Before / Afterを選ぶ</h2>
+          <p data-i18n="sourceHelp">同じ場所を撮った2枚を選びます。少しくらい撮影位置がずれていても、自動で合わせます。</p>
+        </div>
+      </div>
+
+      <div class="source-grid">
+        <article class="source-card" id="referenceCard">
+          <div class="source-card-head"><span class="source-badge">1</span><span class="source-card-title" data-i18n="referenceTitle">Before（基準）</span><span class="source-card-subtitle" data-i18n="referenceSubtitle">変化前</span></div>
+          <div class="dropzone" id="referenceDropzone" tabindex="0" role="button" data-side="reference" data-i18n-aria-label="addReference">
+            <canvas class="source-preview" id="referencePreview"></canvas>
+            <div class="drop-empty">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8" cy="10" r="2"/><path d="m5 17 4.5-4.5 3 3 2-2L19 17"/></svg>
+              <strong data-i18n="addReference">Beforeを追加</strong>
+              <span data-i18n="dropHint">タップして選択 / PCではドロップもできます</span>
+            </div>
+            <input class="hidden-input" id="referenceInput" type="file" accept="image/jpeg,image/png,image/webp">
+          </div>
+          <div class="source-meta">
+            <div class="source-file" id="referenceFile">—</div>
+            <div class="source-detail" id="referenceDetail">—</div>
+            <div class="source-actions"><button class="button" type="button" data-replace="reference" data-i18n="replace">変更</button><button class="button ghost danger-text" type="button" data-remove="reference" data-i18n="remove">外す</button></div>
+          </div>
+        </article>
+
+        <article class="source-card" id="compareCard">
+          <div class="source-card-head"><span class="source-badge">2</span><span class="source-card-title" data-i18n="compareTitle">After（比較）</span><span class="source-card-subtitle" data-i18n="compareSubtitle">変化後</span></div>
+          <div class="dropzone" id="compareDropzone" tabindex="0" role="button" data-side="compare" data-i18n-aria-label="addCompare">
+            <canvas class="source-preview" id="comparePreview"></canvas>
+            <div class="drop-empty">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8" cy="10" r="2"/><path d="m5 17 4.5-4.5 3 3 2-2L19 17"/></svg>
+              <strong data-i18n="addCompare">Afterを追加</strong>
+              <span data-i18n="dropHint">タップして選択 / PCではドロップもできます</span>
+            </div>
+            <input class="hidden-input" id="compareInput" type="file" accept="image/jpeg,image/png,image/webp">
+          </div>
+          <div class="source-meta">
+            <div class="source-file" id="compareFile">—</div>
+            <div class="source-detail" id="compareDetail">—</div>
+            <div class="source-actions"><button class="button" type="button" data-replace="compare" data-i18n="replace">変更</button><button class="button ghost danger-text" type="button" data-remove="compare" data-i18n="remove">外す</button></div>
+          </div>
+          <div class="after-guide-row">
+            <button class="camera-guide-button" id="openCameraGuideButton" type="button" disabled>
+              <span class="camera-guide-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h4l2-2h4l2 2h4v12H4z"/><circle cx="12" cy="13" r="4"/></svg></span>
+              <span class="camera-guide-copy"><strong data-i18n="cameraGuideButton">Beforeに合わせて撮影</strong><small id="cameraGuideButtonHelp" data-i18n="cameraGuideButtonHelp">Beforeを重ねて撮影位置を合わせます</small></span>
+            </button>
+          </div>
+        </article>
+      </div>
+
+      <div class="source-tools"><button class="button" id="swapButton" type="button" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m7 7-3 3 3 3M4 10h12M17 17l3-3-3-3M20 14H8"/></svg><span data-i18n="swap">Before / Afterを入れ替え</span></button></div>
+
+      <div class="compare-panel">
+        <div class="phase-line" aria-live="polite">
+          <span class="phase-dot" id="phaseDot"></span>
+          <div class="phase-copy"><div class="phase-title" id="phaseTitle"></div><div class="phase-detail" id="phaseDetail"></div></div>
+        </div>
+        <button class="button primary" id="compareButton" type="button" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4h9v9H5zM10 11h9v9h-9z"/><path d="m15.5 6.5 3 3M18.5 6.5l-3 3"/></svg><span data-i18n="runCompare">2枚を比較する</span></button>
+      </div>
+      <div class="error-box" id="errorBox" role="alert"></div>
+    </section>
+
+    <section class="section-card result-card" id="resultSection" aria-labelledby="resultTitle">
+      <div class="section-head result-head">
+        <div><h2 id="resultTitle" data-i18n="resultTitle">2. 変化を確認</h2><p data-i18n="resultHelp">まずは「変化を見る」で結果を確認します。必要なときだけ写真のズレや元画像を確認できます。</p></div>
+      </div>
+      <div class="result-empty" id="resultEmpty">
+        <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h11v14H4zM9 2h11v14h-5"/><path d="m7 14 3-3 2 2"/></svg><strong data-i18n="noResultTitle">比較すると結果がここに表示されます</strong><span class="compare-instruction-desktop" data-i18n="noResultBodyDesktop">Before / Afterを追加して「2枚を比較する」を押してください。</span><span class="compare-instruction-mobile" data-i18n="noResultBodyMobile">Before / Afterを追加したら「2枚を比較する」をタップしてください。</span></div>
+      </div>
+      <div class="result-shell">
+        <div class="result-overview" aria-live="polite">
+          <div class="overview-item"><span class="overview-label" data-i18n="quality">ズレ補正</span><strong class="overview-value" id="qualityStat">—</strong></div>
+          <div class="overview-item"><span class="overview-label" data-i18n="changedArea">変化した面積</span><strong class="overview-value" id="changeStat">—</strong></div>
+          <div class="overview-item"><span class="overview-label" data-i18n="regions">変化した場所</span><strong class="overview-value"><span id="regionStat">—</span><span class="overview-unit" data-i18n="regionUnit"> 箇所</span></strong></div>
+        </div>
+
+        <p class="result-summary result-summary-primary" id="resultSummary"></p>
+
+        <div class="result-view-picker">
+          <div class="view-picker-title"><strong data-i18n="viewQuestion">何を確認しますか？</strong><span data-i18n="viewQuestionHelp">普段は「変化を見る」だけでOKです</span></div>
+          <div class="view-choice-grid" role="group" data-i18n-aria-label="viewMode">
+            <button class="view-choice" type="button" data-view="diff" aria-pressed="true">
+              <span class="view-choice-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h11v14H4zM9 2h11v14h-5"/><path d="m7 15 3-3 2 2 3-4"/></svg></span>
+              <span class="view-choice-copy"><strong data-i18n="viewDiffTitle">変化を見る</strong><small data-i18n="viewDiffDesc">変わった場所を赤く強調します</small></span>
+            </button>
+            <button class="view-choice" type="button" data-view="overlay" aria-pressed="false">
+              <span class="view-choice-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="11" height="14" rx="2"/><rect x="9" y="2" width="11" height="14" rx="2"/></svg></span>
+              <span class="view-choice-copy"><strong data-i18n="viewOverlayTitle">ズレを確認</strong><small data-i18n="viewOverlayDesc">2枚を重ねてズレが残っていないか見ます</small></span>
+            </button>
+            <button class="view-choice" type="button" data-view="slider" aria-pressed="false">
+              <span class="view-choice-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v16"/><path d="M4 7h5v10H4zM15 7h5v10h-5z"/></svg></span>
+              <span class="view-choice-copy"><strong data-i18n="viewSliderTitle">スライダーで見る</strong><small data-i18n="viewSliderDesc">指で動かしてBefore / Afterを見比べます</small></span>
+            </button>
+            <button class="view-choice" type="button" data-view="blink" aria-pressed="false">
+              <span class="view-choice-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6Z"/><circle cx="12" cy="12" r="3"/></svg></span>
+              <span class="view-choice-copy"><strong data-i18n="viewBlinkTitle">交互に見る</strong><small data-i18n="viewBlinkDesc">Before / Afterを交互に切り替えて変化を見ます</small></span>
+            </button>
+          </div>
+          <details class="source-view-details" id="sourceViewDetails">
+            <summary><span><strong data-i18n="sourceViewsTitle">元画像を個別に見る</strong><small data-i18n="sourceViewsHint">ズレ補正を詳しく確認したいとき</small></span></summary>
+            <div class="source-view-options">
+              <button class="view-button secondary-view" type="button" data-view="reference" aria-pressed="false"><strong data-i18n="viewReference">Before（基準画像）</strong><span data-i18n="viewReferenceDesc">元の基準画像だけ表示</span></button>
+              <button class="view-button secondary-view" type="button" data-view="aligned" aria-pressed="false"><strong data-i18n="viewAligned">After（ズレ補正後）</strong><span data-i18n="viewAlignedDesc">Beforeに合わせて補正したAfterだけ表示</span></button>
+            </div>
+          </details>
+        </div>
+
+        <p class="view-explainer" id="viewExplainer" aria-live="polite"></p>
+        <div class="result-stage" id="resultStage"><div class="result-stage-content" id="resultStageContent"><canvas id="resultCanvas"></canvas></div></div>
+        <div class="stage-toolbar">
+          <div class="stage-toolbar-copy"><strong data-i18n="zoomPanTitle">拡大して確認</strong><span class="zoom-help-mobile" data-i18n="zoomPanHelpMobile">ピンチで拡大、ドラッグで移動できます</span></div>
+          <div class="stage-toolbar-actions">
+            <button class="mini-button" id="zoomOutButton" type="button" aria-label="Zoom out">−</button>
+            <span class="zoom-badge" id="stageZoomValue">100%</span>
+            <button class="mini-button" id="zoomInButton" type="button" aria-label="Zoom in">＋</button>
+            <button class="mini-button" id="fitViewButton" type="button" data-i18n="zoomReset">表示を戻す</button>
+          </div>
+        </div>
+        <p class="stage-mode-hint" id="stageModeHint" aria-live="polite"></p>
+        <div class="overlay-control" id="overlayControl">
+          <span class="overlay-side-label" data-i18n="overlayBefore">Before</span>
+          <label class="sr-only" for="overlayRange" data-i18n="overlayOpacity">重ね具合</label>
+          <input id="overlayRange" type="range" min="0" max="100" value="50">
+          <span class="overlay-side-label" data-i18n="overlayAfter">After</span>
+          <span class="overlay-percent" id="overlayValue">50%</span>
+        </div>
+        <div class="slider-control" id="sliderControl">
+          <span class="overlay-side-label" data-i18n="sliderLeft">After</span>
+          <label class="sr-only" for="sliderRange" data-i18n="sliderBalance">境界位置</label>
+          <input id="sliderRange" type="range" min="0" max="100" value="50">
+          <span class="overlay-side-label" data-i18n="sliderRight">Before</span>
+          <span class="control-value" id="sliderValue">50%</span>
+        </div>
+        <div class="blink-control" id="blinkControl">
+          <div class="control-hint" data-i18n="blinkSpeed">切り替え速度</div>
+          <select class="blink-select" id="blinkSpeedSelect">
+            <option value="1000" data-i18n="blinkSpeedSlow">ゆっくり</option>
+            <option value="650" selected data-i18n="blinkSpeedNormal">標準</option>
+            <option value="350" data-i18n="blinkSpeedFast">速め</option>
+          </select>
+          <button class="mini-button" id="blinkToggleButton" type="button" data-i18n="blinkPause">一時停止</button>
+        </div>
+
+        <details class="result-adjust-details" id="resultAdjustDetails">
+          <summary>
+            <span class="adjust-summary-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg></span>
+            <span class="adjust-summary-copy"><strong data-i18n="settingsTitle">結果を調整</strong><small data-i18n="settingsInlineHelp">赤い表示が多すぎる・少なすぎるとき</small></span>
+            <span class="adjust-summary-chevron" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="m8 10 4 4 4-4"/></svg></span>
+          </summary>
+          <div class="result-adjust-body">
+            <div class="settings-grid compact-settings">
+              <label class="setting" for="sensitivityRange">
+                <span class="setting-top"><span class="setting-label" data-i18n="sensitivity">変化の拾いやすさ</span><span class="setting-value" id="sensitivityValue">55</span></span>
+                <span class="setting-help" data-i18n="sensitivityHelp">右にすると、小さな色や明るさの違いも変化として表示します。</span>
+                <input id="sensitivityRange" type="range" min="1" max="100" value="55">
+                <span class="range-ends"><span data-i18n="lessSensitive">大きな変化だけ</span><span data-i18n="moreSensitive">小さな変化も</span></span>
+              </label>
+              <label class="setting" for="minAreaRange">
+                <span class="setting-top"><span class="setting-label" data-i18n="minArea">小さな変化を無視</span></span>
+                <span class="setting-help" data-i18n="minAreaHelp">細かな点やちらつきを省いて、まとまった変化を見やすくします。</span>
+                <input id="minAreaRange" type="range" min="0" max="100" step="1" value="42">
+                <span id="minAreaValue" class="min-area-value">いまの目安: 約300 px²</span>
+                <span class="range-ends"><span data-i18n="keepSmall">細かい変化も残す</span><span data-i18n="removeSmall">小さな変化を多めに無視</span></span>
+              </label>
+            </div>
+            <div class="ignore-tools">
+              <div class="ignore-tools-head">
+                <div class="ignore-tools-copy"><strong data-i18n="ignoreTitle">無視する範囲</strong><span data-i18n="ignoreHelp">光の反射や時計など、毎回変わる場所を比較対象から外せます。</span></div>
+                <button class="visibility-switch" id="toggleIgnoreVisibilityButton" type="button" role="switch" aria-checked="true" disabled>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6Z"/><circle cx="12" cy="12" r="3"/></svg>
+                  <span id="ignoreVisibilityLabel" data-i18n="ignoreHideFrames">枠を隠す</span>
+                </button>
+              </div>
+              <div class="ignore-tools-actions">
+                <button class="mini-button" id="toggleIgnoreButton" type="button" data-i18n="ignoreModeStart">範囲を追加</button>
+                <button class="mini-button" id="undoIgnoreButton" type="button" data-i18n="ignoreUndo" disabled>1つ戻す</button>
+                <button class="mini-button" id="clearIgnoreButton" type="button" data-i18n="ignoreClear" disabled>すべて消す</button>
+              </div>
+              <div class="ignore-chip" id="ignoreCountChip">0</div>
+              <p class="ignore-tools-note" id="ignoreHint" data-i18n="ignoreHintIdle">「範囲を追加」を押して、画像上をドラッグするとその部分を無視できます。</p>
+            </div>
+            <details class="advanced inline-advanced" id="advancedSettings">
+              <summary data-i18n="advanced">その他の調整</summary>
+              <div class="advanced-body">
+                <label class="check-row"><span><strong data-i18n="normalizeBrightness">明るさの違いを抑える</strong><br><span data-i18n="normalizeBrightnessHelp">照明の違いを変化として拾いにくくします</span></span><input id="equalizeToggle" type="checkbox" checked></label>
+                <label class="select-row" for="maxEdgeSelect"><span><strong data-i18n="processingSize">写真の細かさ</strong><br><span data-i18n="processingSizeHelp">細かくするほど小さな変化を見つけやすくなりますが、処理は重くなります</span></span><select id="maxEdgeSelect"><option value="1200" data-i18n="processingSizeLight">軽め（1200 px）</option><option value="1800" selected data-i18n="processingSizeStandard">標準（1800 px）</option><option value="2400" data-i18n="processingSizeFine">細かめ（2400 px）</option></select></label>
+              </div>
+              <p class="advanced-note" data-i18n="processingSizeNote">写真の細かさを変えた場合は、もう一度比較してください。</p>
+            </details>
+          </div>
+        </details>
+
+        <div class="export-row export-row-refined">
+          <label class="export-field" for="outputFilename"><span class="export-label" data-i18n="outputFilename">出力ファイル名</span><span class="filename-control"><input class="filename-input" id="outputFilename" type="text" maxlength="120" autocomplete="off" spellcheck="false"><span class="filename-extension" aria-hidden="true">.png</span></span></label>
+          <button class="button primary" id="saveButton" type="button" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4h12l2 2v14H5z"/><path d="M8 4v6h8V4M8 16h8"/></svg><span data-i18n="savePng">この表示をPNG保存</span></button>
+        </div>
+
+        <details class="technical-details">
+          <summary data-i18n="technicalDetails">比較の詳細</summary>
+          <div class="technical-grid">
+            <div><span data-i18n="matches">見つけた目印 / 採用した目印</span><strong id="matchStat">—</strong></div>
+            <div><span data-i18n="processingResolution">比較に使った画像サイズ</span><strong id="resultResolution">—</strong></div>
+          </div>
+        </details>
+      </div>
+    </section>
+
+    <!-- APP:END -->
+
+    <div class="build-info"><span data-i18n="runtimeInfo">比較機能は最初に使うときだけ端末内で準備します。</span> <span id="buildMeta"></span></div>
+  </main>
+
+  <footer><span id="footerName">Same Spot Diff</span> · <span data-i18n="footer">画像処理はブラウザー内で完結します</span></footer>
+
+  <div class="app-toast" id="appToast" role="status" aria-live="polite" data-tone="default"><div class="app-toast-message" id="appToastMessage"></div><button class="app-toast-action" id="appToastAction" type="button" hidden></button></div>
+
+  <nav class="mobile-bar" id="mobileBar" aria-label="Mobile actions">
+    <button class="mobile-item is-active" type="button" data-target="sourceSection"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m5 17 4-4 3 3 2-2 5 3"/></svg><span data-i18n="mobileImages">画像</span></button>
+    <button class="mobile-item primary" id="mobileCompare" type="button" disabled data-action="compare"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4h9v9H5zM10 11h9v9h-9z"/></svg><span data-i18n="mobileCompare">比較</span></button>
+    <button class="mobile-item" type="button" data-target="resultSection"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h11v14H4zM9 2h11v14h-5"/><path d="M7 14h5"/></svg><span data-i18n="mobileResult">結果</span></button>
+    <button class="mobile-item" id="mobileSave" type="button" disabled data-action="save"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4h12l2 2v14H5z"/><path d="M8 4v6h8V4M8 16h8"/></svg><span data-i18n="mobileSave">保存</span></button>
+  </nav>
+
+  <dialog class="camera-guide-dialog" id="cameraGuideDialog" aria-labelledby="cameraGuideTitle">
+    <div class="dialog-header"><h2 id="cameraGuideTitle" data-i18n="cameraGuideTitle">After撮影ガイド</h2><button class="dialog-close" id="closeCameraGuideButton" type="button" data-i18n-aria-label="close" aria-label="閉じる"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="m7 7 10 10M17 7 7 17"/></svg></button></div>
+    <div class="dialog-body">
+      <p class="camera-guide-intro" data-i18n="cameraGuideIntro">Beforeが半透明で重なります。輪郭や角が合うように端末の位置を合わせてから撮影してください。</p>
+      <div class="camera-guide-stage" id="cameraGuideStage">
+        <video id="cameraGuideVideo" autoplay muted playsinline></video>
+        <img class="camera-guide-before" id="cameraGuideBefore" alt="">
+        <div class="camera-guide-grid" aria-hidden="true"></div>
+        <div class="camera-guide-status" id="cameraGuideStatus" aria-live="polite" data-i18n="cameraGuideStarting">カメラを準備しています…</div>
+      </div>
+      <div class="camera-guide-controls">
+        <div class="camera-guide-opacity"><label for="cameraGuideOpacity" data-i18n="cameraGuideOpacity">Beforeの濃さ</label><input id="cameraGuideOpacity" type="range" min="10" max="90" value="46"><output id="cameraGuideOpacityValue">46%</output></div>
+        <div class="camera-guide-options"><span class="camera-guide-tip" data-i18n="cameraGuideTip">Beforeの線とカメラ映像が重なるほど、比較しやすくなります。</span><button class="mini-button active" id="cameraGuideOverlayToggle" type="button" aria-pressed="true" data-i18n="cameraGuideHideBefore">Beforeを隠す</button></div>
+      </div>
+      <div class="camera-guide-actions"><button class="button" id="cancelCameraGuideButton" type="button" data-i18n="cancel">キャンセル</button><button class="button primary camera-capture-button" id="captureCameraGuideButton" type="button" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="3"/></svg><span data-i18n="cameraGuideCapture">撮影してAfterに使う</span></button></div>
+      <p class="camera-guide-note" data-i18n="cameraGuidePrivacy">カメラ映像と撮影した写真は端末内だけで扱います。カメラの利用にはブラウザーの許可が必要です。</p>
+    </div>
+  </dialog>
+
+  <dialog id="helpDialog" aria-labelledby="helpDialogTitle">
+    <div class="dialog-header"><h2 id="helpDialogTitle" data-i18n="helpTitle">使い方と注意事項</h2><button class="dialog-close" id="closeHelpButton" type="button" data-i18n-aria-label="close" aria-label="閉じる"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="m7 7 10 10M17 7 7 17"/></svg></button></div>
+    <div class="dialog-body">
+      <!-- APP:HELP:BEGIN -->
+      <h3 data-i18n="helpBasicsTitle">基本操作</h3>
+      <ol><li data-i18n="helpStep1">基準画像にBefore、比較画像にAfterの写真を追加します。</li><li data-i18n="helpStep2">「比較する」を押すと、2枚の写真で共通する目印を探して自動でズレを合わせます。</li><li data-i18n="helpStep3">赤い表示が多すぎる・少なすぎる場合は、結果のすぐ下にある「結果を調整」を使います。</li><li data-i18n="helpStep4">まず「変化を見る」で確認し、必要なら「ズレを確認」や元画像の個別表示を使います。</li></ol>
+      <h3 data-i18n="helpPrivacyTitle">プライバシー</h3><p data-i18n="helpPrivacyBody">画像と比較結果はこの端末内だけで処理されます。このアプリから画像をアップロードせず、比較に必要な機能も実行時に外部から読み込みません。</p>
+      <h3 data-i18n="helpLimitsTitle">うまくズレを合わせにくい写真</h3><ul><li data-i18n="helpLimit1">撮影位置が大きく異なり、手前と奥の物でズレ方が大きく違う写真</li><li data-i18n="helpLimit2">無地の壁など、対応付けられる模様や角がほとんどない写真</li><li data-i18n="helpLimit3">大部分が別の物で隠れている、または構図が大きく変わった写真</li><li data-i18n="helpLimit4">強い影、照明、反射の変化は「物の変化」として検出される場合があります。</li></ul>
+      <h3 data-i18n="helpNotesTitle">注意事項</h3><ul><li data-i18n="helpNoteResolution">動作を安定させるため、写真は選んだ「写真の細かさ」に合わせて縮小して比較します。保存画像も同じ大きさです。</li><li data-i18n="helpNoteDecision">自動で見つけた変化は確認の補助です。工事・品質検査など重要な判定では元画像も確認してください。</li><li data-i18n="helpNoteMemory">大きな写真は端末のメモリを多く使います。スマホで不安定な場合は「写真の細かさ」を「軽め」にしてください。</li></ul>
+      <p class="dialog-note" data-i18n="helpOffline">GitHub Pages版も、ページ読み込み後の比較処理は端末内だけで行います。完全オフラインではdist/index.htmlを直接開けます。</p>
+      <!-- APP:HELP:END -->
+    </div>
+  </dialog>
+
+  <script>
+    (() => {
+      'use strict';
+
+      const APP_CONFIG = __APP_CONFIG_JSON__;
+      const BUILD_MANIFEST = __BUILD_MANIFEST_JSON__;
+      const assetBundle = __EMBEDDED_ASSET_BUNDLE_JSON__;
+      const blobUrls = new Set();
+      const assetByteCache = new Map();
+
+      function decodeBase64Bytes(base64) {
+        const binary = atob(base64);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+        return bytes;
+      }
+      function getAsset(dependencyId, assetKey) {
+        const asset = assetBundle.dependencies?.[dependencyId]?.assets?.[assetKey];
+        if (!asset) throw new Error(`Embedded asset not found: ${dependencyId}/${assetKey}`);
+        return asset;
+      }
+      async function inflateAsset(asset) {
+        const stored = decodeBase64Bytes(asset.base64);
+        if (!asset.compression || asset.compression === 'none') return stored;
+        if (asset.compression !== 'gzip') throw new Error(`Unsupported embedded asset compression: ${asset.compression}`);
+        if (typeof DecompressionStream !== 'function') throw new Error('This browser cannot expand gzip-compressed embedded assets.');
+        const stream = new Blob([stored]).stream().pipeThrough(new DecompressionStream('gzip'));
+        const expanded = new Uint8Array(await new Response(stream).arrayBuffer());
+        if (Number.isFinite(asset.originalBytes) && expanded.byteLength !== asset.originalBytes) throw new Error('Embedded asset size check failed.');
+        return expanded;
+      }
+      window.StandaloneAssets = Object.freeze({
+        manifest: BUILD_MANIFEST,
+        list() { return Object.entries(assetBundle.dependencies || {}).flatMap(([dependencyId, dependency]) => Object.keys(dependency.assets || {}).map(assetKey => `${dependencyId}/${assetKey}`)); },
+        has(dependencyId, assetKey) { return Boolean(assetBundle.dependencies?.[dependencyId]?.assets?.[assetKey]); },
+        bytes(dependencyId, assetKey) { const asset = getAsset(dependencyId, assetKey); if (asset.compression && asset.compression !== 'none') throw new Error('Use bytesAsync() for compressed assets.'); return decodeBase64Bytes(asset.base64); },
+        async bytesAsync(dependencyId, assetKey) { const cacheKey = `${dependencyId}/${assetKey}`; if (!assetByteCache.has(cacheKey)) assetByteCache.set(cacheKey, inflateAsset(getAsset(dependencyId, assetKey))); return new Uint8Array(await assetByteCache.get(cacheKey)); },
+        text(dependencyId, assetKey) { return new TextDecoder().decode(this.bytes(dependencyId, assetKey)); },
+        async textAsync(dependencyId, assetKey) { return new TextDecoder().decode(await this.bytesAsync(dependencyId, assetKey)); },
+        blobUrl(dependencyId, assetKey) { const asset = getAsset(dependencyId, assetKey); const url = URL.createObjectURL(new Blob([this.bytes(dependencyId, assetKey)], { type: asset.mime || 'application/octet-stream' })); blobUrls.add(url); return url; },
+        async blobUrlAsync(dependencyId, assetKey) { const asset = getAsset(dependencyId, assetKey); const url = URL.createObjectURL(new Blob([await this.bytesAsync(dependencyId, assetKey)], { type: asset.mime || 'application/octet-stream' })); blobUrls.add(url); return url; },
+        async loadClassicScript(dependencyId, assetKey) { const sourceUrl = await this.blobUrlAsync(dependencyId, assetKey); try { await new Promise((resolve, reject) => { const script = document.createElement('script'); script.src = sourceUrl; script.onload = resolve; script.onerror = () => reject(new Error(`Failed to load ${dependencyId}/${assetKey}`)); document.head.append(script); }); return true; } finally { URL.revokeObjectURL(sourceUrl); blobUrls.delete(sourceUrl); } }
+      });
+      window.addEventListener('pagehide', () => { blobUrls.forEach(url => URL.revokeObjectURL(url)); blobUrls.clear(); });
+
+      const translations = {
+        ja: {
+          brandMeta: '写真のズレを合わせて変化を比較・端末内処理', helpTitle: '使い方と注意事項', close: '閉じる', introTitle: '撮影位置のズレを直してから、変化を見つける', lead: 'Before / Afterの写真が少しずれていても、自動でズレを合わせて変わった場所だけを強調します。', localBadge: '画像を外部送信しません',
+          sourceTitle: '1. Before / Afterを選ぶ', sourceHelp: '同じ場所を撮った2枚を選びます。少しくらい撮影位置がずれていても、自動で合わせます。', referenceTitle: 'Before（基準）', referenceSubtitle: '変化前', compareTitle: 'After（比較）', compareSubtitle: '変化後', addReference: 'Beforeを追加', addCompare: 'Afterを追加', dropHint: 'タップして選択 / PCではドロップもできます', replace: '変更', remove: '外す', swap: 'Before / Afterを入れ替え', runCompare: '2枚を比較する',
+          adjustBadge: '必要なときだけ', settingsTitle: '結果を調整', settingsHelp: '赤い表示が多すぎる・少なすぎるときに調整します。', settingsInlineHelp: '赤い表示が多すぎる・少なすぎるとき', processingSizeLight: '軽め（1200 px）', processingSizeStandard: '標準（1800 px）', processingSizeFine: '細かめ（2400 px）', processingSizeNote: '写真の細かさを変えた場合は、もう一度比較してください。', processingSizeChanged: '写真の細かさを変更しました。もう一度比較してください。', sensitivity: '変化の拾いやすさ', sensitivityHelp: '右にすると、小さな色や明るさの違いも変化として表示します。', lessSensitive: '大きな変化だけ', moreSensitive: '小さな変化も', minArea: '小さな変化を無視', minAreaHelp: '細かな点やちらつきを省いて、まとまった変化を見やすくします。', keepSmall: '細かい変化も残す', removeSmall: '小さな変化を多めに無視', advanced: 'その他の調整', normalizeBrightness: '明るさの違いを抑える', normalizeBrightnessHelp: '照明の違いを変化として拾いにくくします', processingSize: '写真の細かさ', processingSizeHelp: '細かくするほど小さな変化を見つけやすくなりますが、処理は重くなります',
+          resultTitle: '2. 変化を確認', resultHelp: 'まずは「変化を見る」で結果を確認します。必要なときだけ写真のズレや元画像を確認できます。', noResultTitle: '比較すると結果がここに表示されます', noResultBodyDesktop: 'Before / Afterを追加して「2枚を比較する」を押してください。', noResultBodyMobile: 'Before / Afterを追加したら「2枚を比較する」をタップしてください。', quality: 'ズレ補正', matches: '見つけた目印 / 採用した目印', changedArea: '変化した面積', regions: '変化した場所', regionUnit: ' 箇所', viewMode: '結果の見方', viewQuestion: '何を確認しますか？', viewQuestionHelp: '普段は「変化を見る」だけでOKです', viewDiffTitle: '変化を見る', viewDiffDesc: '変わった場所を赤く強調します', viewOverlayTitle: 'ズレを確認', viewOverlayDesc: '2枚を重ねてズレが残っていないか見ます', sourceViewsTitle: '元画像を個別に見る', sourceViewsHint: 'ズレ補正を詳しく確認したいとき', viewReference: 'Before（基準画像）', viewReferenceDesc: '元の基準画像だけ表示', viewAligned: 'After（ズレ補正後）', viewAlignedDesc: 'Beforeに合わせて補正したAfterだけ表示', viewHintDiff: '赤く囲まれた部分が、変化として検出された場所です。', viewHintOverlay: 'Beforeとズレ補正後のAfterを重ねています。輪郭が大きく二重に見える場合はズレが残っています。', viewHintReference: 'Beforeの元画像を表示しています。', viewHintAligned: 'Beforeに合わせてズレを補正したAfterを表示しています。', overlayOpacity: '重ね具合', overlayBefore: 'Before', overlayAfter: 'After', technicalDetails: '比較の詳細', processingResolution: '比較に使った画像サイズ', outputFilename: '出力ファイル名', savePng: 'この表示をPNG保存',
+          mobileImages: '画像', mobileCompare: '比較', mobileResult: '結果', mobileSave: '保存', runtimeInfo: '比較機能は最初に使うときだけ端末内で準備します。', footer: '画像処理はブラウザー内で完結します',
+          phaseEmptyTitle: '画像を2枚追加してください', phaseEmptyDetail: 'JPEG / PNG / WebP・1枚40MBまで', phaseReadyTitle: '2枚そろいました', phaseReadyDetailDesktop: '「2枚を比較する」で変化を確認できます', phaseReadyDetailMobile: '「2枚を比較する」で変化を確認できます', phaseLoadingTitle: '比較の準備中', phaseLoadingDetail: '必要な比較機能を端末内で準備しています', phaseProcessingTitle: '写真のズレを合わせて比較中', phaseProcessingDetail: '2枚の写真で共通する目印を探しています。大きな写真では少し時間がかかります。', phaseDiffTitle: '結果を更新中', phaseDiffDetail: '写真のズレ補正はそのまま、変化の表示だけ更新しています', phaseResultTitle: '比較が完了しました', phaseErrorTitle: '比較できませんでした',
+          qualityHigh: '良好', qualityMedium: '普通', qualityLow: '低め', resultSummary: '写真のズレを補正しました。比較できる範囲の{changed}%に変化が見つかりました。', noChangeSummary: '写真のズレは補正できました。現在の設定では、目立つ変化は見つかりませんでした。',
+          fileTooLarge: '画像は1枚40MBまでです。', unsupportedImage: 'JPEG / PNG / WebP画像を選んでください。', decodeFailed: '画像を読み込めませんでした。別の画像で試してください。', runtimeMissing: '比較機能を準備できませんでした。ページを再読み込みしてください。改善しない場合はアプリを再ビルドしてください。', notEnoughFeatures: '2枚の写真で共通する目印が十分に見つかりませんでした。模様や輪郭がもう少し写った、近い構図の写真で試してください。', homographyFailed: '写真のズレをうまく合わせられませんでした。2枚の撮影位置や構図が離れすぎている可能性があります。', overlapTooSmall: '2枚で重なる範囲が小さすぎます。より近い構図の写真で試してください。', genericError: '処理中にエラーが発生しました。', sourceChanged: '画像を変更したため、以前の比較結果をクリアしました。', settingsUpdated: '設定を反映しました。', saved: 'PNGを保存しました。', compareComplete: '比較が完了しました。', swapped: '基準画像と比較画像を入れ替えました。',
+          helpBasicsTitle: '基本操作', helpStep1: 'Beforeを追加します。Afterは写真を選ぶか、「Beforeに合わせて撮影」で撮影位置を合わせながら撮れます。', helpStep2: '「比較する」を押すと、2枚の写真で共通する目印を探して自動でズレを合わせます。', helpStep3: '赤い表示が多すぎる・少なすぎる場合は「結果を調整」を使います。時計や反射など毎回変わる場所は「無視する範囲」にできます。', helpStep4: 'まず「変化を見る」で確認し、必要ならスライダー・交互表示・ズレ確認や元画像の個別表示を使います。', helpPrivacyTitle: 'プライバシー', helpPrivacyBody: '画像と比較結果はこの端末内だけで処理されます。このアプリから画像をアップロードせず、比較に必要な機能も実行時に外部から読み込みません。', helpLimitsTitle: 'うまくズレを合わせにくい写真', helpLimit1: '撮影位置が大きく異なり、手前と奥の物でズレ方が大きく違う写真', helpLimit2: '無地の壁など、対応付けられる模様や角がほとんどない写真', helpLimit3: '大部分が別の物で隠れている、または構図が大きく変わった写真', helpLimit4: '強い影、照明、反射の変化は「物の変化」として検出される場合があります。', helpNotesTitle: '注意事項', helpNoteResolution: '動作を安定させるため、写真は選んだ「写真の細かさ」に合わせて縮小して比較します。保存画像も同じ大きさです。', helpNoteDecision: '自動で見つけた変化は確認の補助です。工事・品質検査など重要な判定では元画像も確認してください。', helpNoteMemory: '大きな写真は端末のメモリを多く使います。スマホで不安定な場合は「写真の細かさ」を「軽め」にしてください。', helpOffline: 'GitHub Pages版も、ページ読み込み後の比較処理は端末内だけで行います。完全オフラインではdist/index.htmlを直接開けます。', viewSliderTitle: 'スライダーで見る', viewSliderDesc: '指で動かしてBefore / Afterを見比べます', viewBlinkTitle: '交互に見る', viewBlinkDesc: 'Before / Afterを交互に切り替えて変化を見ます', viewHintSlider: '境界線を動かしながら、BeforeとAfterを左右で見比べます。', viewHintBlink: 'BeforeとAfterを交互に表示しています。変わった場所を目で追いたいときに便利です。', sliderBalance: '境界位置', sliderLeft: 'After', sliderRight: 'Before', blinkSpeed: '切り替え速度', blinkSpeedSlow: 'ゆっくり', blinkSpeedNormal: '標準', blinkSpeedFast: '速め', blinkPause: '一時停止', blinkResume: '再開', zoomPanTitle: '拡大して確認', zoomPanHelp: 'ピンチで拡大、ドラッグで移動できます', zoomPanHelpMobile: 'ピンチで拡大、ドラッグで移動できます', zoomReset: '表示を戻す', ignoreTitle: '無視する範囲', ignoreHelp: '光の反射や時計など、毎回変わる場所を比較対象から外せます。', ignoreModeStart: '範囲を追加', ignoreModeStop: '追加を終了', ignoreHideFrames: '枠を隠す', ignoreShowFrames: '枠を表示', ignoreUndo: '1つ戻す', ignoreClear: 'すべて消す', ignoreHintIdle: '「範囲を追加」を押して、画像上をドラッグするとその部分を無視できます。', ignoreHintActive: '追加中です。画像上をドラッグして無視する範囲を囲んでください。', ignoreCount: '無視する範囲: {count}', ignoreAdded: '無視する範囲を追加しました。', ignoreRemoved: '最後の範囲を取り消しました。', ignoreCleared: '無視する範囲を消しました。', minAreaCurrent: 'いまの目安: 約{value} px²', cameraGuideButton: 'Beforeに合わせて撮影', cameraGuideButtonHelp: 'Beforeを重ねて撮影位置を合わせます', cameraGuideNeedBefore: '先にBeforeを追加すると撮影ガイドを使えます', cameraGuideTitle: 'After撮影ガイド', cameraGuideIntro: 'Beforeが半透明で重なります。輪郭や角が合うように端末の位置を合わせてから撮影してください。', cameraGuideStarting: 'カメラを準備しています…', cameraGuideReady: '位置を合わせたら撮影してください', cameraGuideOpacity: 'Beforeの濃さ', cameraGuideTip: 'Beforeの線とカメラ映像が重なるほど、比較しやすくなります。', cameraGuideHideBefore: 'Beforeを隠す', cameraGuideShowBefore: 'Beforeを表示', cameraGuideCapture: '撮影してAfterに使う', cameraGuideCapturing: '撮影しています…', cameraGuideCaptured: '撮影した写真をAfterに追加しました。', cameraGuidePrivacy: 'カメラ映像と撮影した写真は端末内だけで扱います。カメラの利用にはブラウザーの許可が必要です。', cameraGuideUnavailable: 'このブラウザーでは撮影ガイドを利用できません。通常の「Afterを追加」を使ってください。', cameraGuidePermissionError: 'カメラを開けませんでした。ブラウザーのカメラ許可を確認してください。', cameraGuideNoCamera: '利用できるカメラが見つかりませんでした。', cameraGuideOpenError: 'カメラを開けませんでした。通常の「Afterを追加」をお試しください。', cameraGuideCaptureError: '撮影に失敗しました。もう一度お試しください。', cancel: 'キャンセル'
+        },
+        en: {
+          brandMeta: 'Aligned image diff · Local processing', helpTitle: 'How to use & notes', close: 'Close', introTitle: 'Fix camera offset, then find what changed', lead: 'Even when Before and After were taken a little differently, align them automatically and highlight meaningful changes.', localBadge: 'Images never leave this device',
+          sourceTitle: '1. Choose Before / After', sourceHelp: 'Choose two photos of the same place. Small camera-position differences are corrected automatically.', referenceTitle: 'Before (reference)', referenceSubtitle: 'Before', compareTitle: 'After (compare)', compareSubtitle: 'After', addReference: 'Add Before', addCompare: 'Add After', dropHint: 'Tap to choose / drop on desktop', replace: 'Replace', remove: 'Remove', swap: 'Swap Before / After', runCompare: 'Compare two photos',
+          adjustBadge: 'Only if needed', settingsTitle: 'Tune the result', settingsHelp: 'Use this when too much or too little is highlighted.', settingsInlineHelp: 'When too much or too little is highlighted', processingSizeLight: 'Light (1200 px)', processingSizeStandard: 'Standard (1800 px)', processingSizeFine: 'Fine (2400 px)', processingSizeNote: 'If you change Photo detail, compare the two photos again.', processingSizeChanged: 'Photo detail changed. Compare the two photos again.', sensitivity: 'Change sensitivity', sensitivityHelp: 'Move right to include smaller color and brightness changes.', lessSensitive: 'Larger changes only', moreSensitive: 'Include subtle changes', minArea: 'Ignore tiny changes', minAreaHelp: 'Hides tiny specks so larger changes are easier to see.', keepSmall: 'Keep tiny changes', removeSmall: 'Ignore more tiny changes', advanced: 'Other adjustments', normalizeBrightness: 'Reduce lighting differences', normalizeBrightnessHelp: 'Makes lighting changes less likely to appear as real changes', processingSize: 'Photo detail', processingSizeHelp: 'More detail can reveal smaller changes, but uses more memory',
+          resultTitle: '2. Review changes', resultHelp: 'Start with “View changes”. Check photo alignment or the original images only when needed.', noResultTitle: 'Your result will appear here', noResultBodyDesktop: 'Add Before / After and press “Compare two photos”.', noResultBodyMobile: 'Add Before / After, then tap “Compare two photos”.', quality: 'Photo alignment', matches: 'Landmarks found / landmarks used', changedArea: 'Changed area', regions: 'Changed regions', regionUnit: '', viewMode: 'How to review the result', viewQuestion: 'What do you want to check?', viewQuestionHelp: '“View changes” is enough for most checks', viewDiffTitle: 'View changes', viewDiffDesc: 'Highlights detected changes in red', viewOverlayTitle: 'Check photo alignment', viewOverlayDesc: 'Overlays the two images to reveal misalignment', sourceViewsTitle: 'View images separately', sourceViewsHint: 'For a closer look at how the photos were aligned', viewReference: 'Before (reference)', viewReferenceDesc: 'Show only the original reference image', viewAligned: 'After (adjusted)', viewAlignedDesc: 'Show only After adjusted to match Before', viewHintDiff: 'Red outlines mark areas detected as changed.', viewHintOverlay: 'Before and aligned After are overlaid. Strong doubled edges can indicate imperfect alignment.', viewHintReference: 'Showing the original Before image.', viewHintAligned: 'Showing the After image warped into the Before position.', overlayOpacity: 'Overlay balance', overlayBefore: 'Before', overlayAfter: 'After', technicalDetails: 'Comparison details', processingResolution: 'Image size used for comparison', outputFilename: 'Output filename', savePng: 'Save this view as PNG',
+          mobileImages: 'Images', mobileCompare: 'Compare', mobileResult: 'Result', mobileSave: 'Save', runtimeInfo: 'The comparison feature is prepared locally only when you use it the first time.', footer: 'Image processing stays inside your browser',
+          phaseEmptyTitle: 'Add two images', phaseEmptyDetail: 'JPEG / PNG / WebP · up to 40 MB each', phaseReadyTitle: 'Both photos are ready', phaseReadyDetailDesktop: 'Press “Compare two photos” to check the changes', phaseReadyDetailMobile: 'Press “Compare two photos” to check the changes', phaseLoadingTitle: 'Preparing comparison', phaseLoadingDetail: 'Preparing the comparison feature on this device', phaseProcessingTitle: 'Aligning the photos and comparing', phaseProcessingDetail: 'Finding common landmarks in the two photos. Large photos can take longer.', phaseDiffTitle: 'Updating the result', phaseDiffDetail: 'Keeping the photo alignment and updating only the highlighted changes', phaseResultTitle: 'Comparison complete', phaseErrorTitle: 'Could not compare',
+          qualityHigh: 'Good', qualityMedium: 'Fair', qualityLow: 'Low', resultSummary: 'Alignment succeeded. {changed}% of the valid overlap is marked as changed.', noChangeSummary: 'Alignment succeeded, but no large change regions were found with the current settings.',
+          fileTooLarge: 'Each image must be 40 MB or smaller.', unsupportedImage: 'Choose a JPEG, PNG, or WebP image.', decodeFailed: 'The image could not be decoded. Try another image.', runtimeMissing: 'The comparison feature could not be prepared. Reload the page. If the problem continues, rebuild the app.', notEnoughFeatures: 'Not enough common landmarks were found in the two photos. Try a closer composition with more visible shapes or patterns.', homographyFailed: 'The two photos could not be aligned reliably. Their camera positions or compositions may be too different.', overlapTooSmall: 'The aligned overlap is too small. Try photos with a closer composition.', genericError: 'An error occurred while processing the images.', sourceChanged: 'The previous result was cleared because an image changed.', settingsUpdated: 'Settings updated.', saved: 'PNG saved.', compareComplete: 'Comparison complete.', swapped: 'Reference and comparison images swapped.',
+          helpBasicsTitle: 'Basics', helpStep1: 'Add Before. For After, choose a photo or use “Take After with guide” to match the camera position while shooting.', helpStep2: 'Press Compare. The app finds common landmarks in the two photos and automatically aligns them.', helpStep3: 'If too much or too little is highlighted, open “Tune the result”. Mark clocks, reflections, or other naturally changing areas as ignored when useful.', helpStep4: 'Start with “View changes”. Use the slider, Blink, alignment check, or separate source-image views only when needed.', helpPrivacyTitle: 'Privacy', helpPrivacyBody: 'Images and comparison results stay on this device. The app does not upload your photos, and the comparison feature is not downloaded from elsewhere while you use it.', helpLimitsTitle: 'Photos that are harder to align', helpLimit1: 'The camera moved a lot, so nearby and distant objects shift by very different amounts', helpLimit2: 'Featureless scenes such as a plain wall with almost no texture or corners', helpLimit3: 'Most of the scene is occluded or the composition changed substantially', helpLimit4: 'Strong shadows, lighting, and reflections can be detected as visual changes.', helpNotesTitle: 'Notes', helpNoteResolution: 'To keep the app stable, photos are resized according to the selected Photo detail setting. Saved results use the same size.', helpNoteDecision: 'Automatic differences are a review aid. For construction, quality, or other important decisions, inspect the original photos too.', helpNoteMemory: 'Large photos use more device memory. If your phone becomes unstable, set Photo detail to Light.', helpOffline: 'On GitHub Pages, comparison still runs locally after the page loads. For fully offline use, open dist/index.html directly.', viewSliderTitle: 'Use a slider', viewSliderDesc: 'Drag to compare Before and After side by side', viewBlinkTitle: 'Blink view', viewBlinkDesc: 'Alternate Before and After to spot changes', viewHintSlider: 'Move the divider to compare Before and After side by side.', viewHintBlink: 'Before and After are alternating. This is useful when you want to spot changes by eye.', sliderBalance: 'Divider position', sliderLeft: 'After', sliderRight: 'Before', blinkSpeed: 'Blink speed', blinkSpeedSlow: 'Slow', blinkSpeedNormal: 'Normal', blinkSpeedFast: 'Fast', blinkPause: 'Pause', blinkResume: 'Resume', zoomPanTitle: 'Zoom in to inspect', zoomPanHelp: 'Pinch to zoom and drag to move around', zoomPanHelpMobile: 'Pinch to zoom and drag to move around', zoomReset: 'Reset view', ignoreTitle: 'Ignore areas', ignoreHelp: 'Exclude places such as reflections or clocks that naturally change every time.', ignoreModeStart: 'Add area', ignoreModeStop: 'Stop adding', ignoreHideFrames: 'Hide outlines', ignoreShowFrames: 'Show outlines', ignoreUndo: 'Undo last', ignoreClear: 'Clear all', ignoreHintIdle: 'Press “Add area”, then drag on the image to ignore that part.', ignoreHintActive: 'Adding mode is on. Drag on the image to mark an area to ignore.', ignoreCount: 'Ignored areas: {count}', ignoreAdded: 'Ignored area added.', ignoreRemoved: 'Last ignored area removed.', ignoreCleared: 'Ignored areas cleared.', minAreaCurrent: 'Current guide: about {value} px²', cameraGuideButton: 'Take After with guide', cameraGuideButtonHelp: 'Overlay Before to match the camera position', cameraGuideNeedBefore: 'Add Before first to use the camera guide', cameraGuideTitle: 'After camera guide', cameraGuideIntro: 'Before is overlaid transparently. Match the main edges and corners, then take the After photo.', cameraGuideStarting: 'Preparing the camera…', cameraGuideReady: 'Match the position, then take the photo', cameraGuideOpacity: 'Before opacity', cameraGuideTip: 'The closer the Before outlines match the live camera, the easier the comparison will be.', cameraGuideHideBefore: 'Hide Before', cameraGuideShowBefore: 'Show Before', cameraGuideCapture: 'Take photo and use as After', cameraGuideCapturing: 'Taking photo…', cameraGuideCaptured: 'The captured photo was added as After.', cameraGuidePrivacy: 'The camera preview and captured photo stay on this device. Browser camera permission is required.', cameraGuideUnavailable: 'The camera guide is not available in this browser. Use “Add After” instead.', cameraGuidePermissionError: 'The camera could not be opened. Check your browser camera permission.', cameraGuideNoCamera: 'No available camera was found.', cameraGuideOpenError: 'The camera could not be opened. Try “Add After” instead.', cameraGuideCaptureError: 'The photo could not be captured. Please try again.', cancel: 'Cancel'
+        }
+      };
+
+      const $ = selector => document.querySelector(selector);
+      const $$ = selector => Array.from(document.querySelectorAll(selector));
+      const storageKey = `${APP_CONFIG.slug}:language`;
+      const state = {
+        language: readStorage(storageKey) || detectLanguage(),
+        generation: 0,
+        decodeGeneration: { reference: 0, compare: 0 },
+        phase: 'empty',
+        sources: { reference: null, compare: null },
+        cv: null,
+        cvPromise: null,
+        alignment: null,
+        result: null,
+        view: 'diff',
+        ignoredRegions: [],
+        ignoreDraft: null,
+        ignoreMode: false,
+        showIgnoredRegions: true,
+        blinkTimer: 0,
+        blinkRunning: true,
+        blinkFrame: 'reference',
+        viewport: { zoom: 1, panX: 0, panY: 0, baseScale: 1 },
+        cameraStream: null,
+        cameraOverlayUrl: '',
+        cameraOverlayVisible: true,
+        outputTouched: false
+      };
+      const stageInteraction = { pointers: new Map(), mode: '', anchor: null, lastX: 0, lastY: 0, pinchStartDistance: 0, pinchStartZoom: 1 };
+
+      function readStorage(key) { try { return localStorage.getItem(key); } catch { return null; } }
+      function writeStorage(key, value) { try { localStorage.setItem(key, value); } catch { /* unavailable */ } }
+      function detectLanguage() { if (APP_CONFIG.defaultLanguage === 'ja' || APP_CONFIG.defaultLanguage === 'en') return APP_CONFIG.defaultLanguage; return (navigator.language || '').toLowerCase().startsWith('ja') ? 'ja' : 'en'; }
+      function t(key) { return translations[state.language]?.[key] ?? translations.en[key] ?? key; }
+      function formatNumber(value, digits = 0) { return new Intl.NumberFormat(state.language, { maximumFractionDigits: digits, minimumFractionDigits: digits }).format(value); }
+      function formatBytes(bytes) { if (bytes < 1024 * 1024) return `${formatNumber(bytes / 1024, 0)} KB`; return `${formatNumber(bytes / (1024 * 1024), 1)} MB`; }
+      function nextFrame() { return new Promise(resolve => requestAnimationFrame(() => resolve())); }
+      function safeDelete(value) { try { if (value && typeof value.delete === 'function') value.delete(); } catch { /* ignore cleanup failures */ } }
+      function closeDrawable(source) { try { if (source?.drawable && typeof source.drawable.close === 'function') source.drawable.close(); } catch { /* ignore */ } }
+
+function updateCameraGuideUi() {
+  const button = $('#openCameraGuideButton');
+  if (!button) return;
+  button.disabled = !state.sources.reference || ['loading-runtime','processing','processing-diff'].includes(state.phase);
+  const help = $('#cameraGuideButtonHelp');
+  if (help) help.textContent = state.sources.reference ? t('cameraGuideButtonHelp') : t('cameraGuideNeedBefore');
+}
+function releaseCameraGuide() {
+  if (state.cameraStream) {
+    for (const track of state.cameraStream.getTracks()) { try { track.stop(); } catch { /* ignore */ } }
+    state.cameraStream = null;
+  }
+  const video = $('#cameraGuideVideo'); if (video) video.srcObject = null;
+  if (state.cameraOverlayUrl) { URL.revokeObjectURL(state.cameraOverlayUrl); state.cameraOverlayUrl = ''; }
+  const before = $('#cameraGuideBefore'); if (before) before.removeAttribute('src');
+  const capture = $('#captureCameraGuideButton'); if (capture) capture.disabled = true;
+}
+function setCameraGuideStatus(message, tone = 'default') {
+  const status = $('#cameraGuideStatus'); if (!status) return;
+  status.textContent = message; status.dataset.tone = tone;
+  status.hidden = !message;
+}
+function cameraErrorMessage(error) {
+  const name = String(error?.name || '');
+  if (name === 'NotAllowedError' || name === 'SecurityError') return t('cameraGuidePermissionError');
+  if (name === 'NotFoundError' || name === 'OverconstrainedError') return t('cameraGuideNoCamera');
+  return t('cameraGuideOpenError');
+}
+async function openCameraGuide() {
+  if (!state.sources.reference) { toast(t('cameraGuideNeedBefore'), { tone: 'warning' }); return; }
+  if (!navigator.mediaDevices?.getUserMedia) { toast(t('cameraGuideUnavailable'), { tone: 'warning' }); return; }
+  const dialog = $('#cameraGuideDialog');
+  releaseCameraGuide();
+  state.cameraOverlayVisible = true;
+  $('#cameraGuideOverlayToggle').setAttribute('aria-pressed', 'true');
+  $('#cameraGuideOverlayToggle').textContent = t('cameraGuideHideBefore');
+  $('#cameraGuideBefore').style.display = '';
+  $('#cameraGuideOpacity').value = '46'; $('#cameraGuideOpacityValue').textContent = '46%'; $('#cameraGuideBefore').style.opacity = '.46';
+  state.cameraOverlayUrl = URL.createObjectURL(state.sources.reference.file);
+  $('#cameraGuideBefore').src = state.cameraOverlayUrl;
+  setCameraGuideStatus(t('cameraGuideStarting'));
+  if (!dialog.open) dialog.showModal();
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } } });
+    if (!dialog.open) { for (const track of stream.getTracks()) track.stop(); return; }
+    state.cameraStream = stream;
+    const video = $('#cameraGuideVideo'); video.srcObject = stream;
+    if (video.readyState < 1) await new Promise((resolve, reject) => { const done = () => { cleanup(); resolve(); }; const fail = () => { cleanup(); reject(new Error('video metadata failed')); }; const cleanup = () => { video.removeEventListener('loadedmetadata', done); video.removeEventListener('error', fail); }; video.addEventListener('loadedmetadata', done, { once: true }); video.addEventListener('error', fail, { once: true }); });
+    try { await video.play(); } catch { /* autoplay may already have started */ }
+    if (video.videoWidth && video.videoHeight) $('#cameraGuideStage').style.aspectRatio = `${video.videoWidth} / ${video.videoHeight}`;
+    $('#captureCameraGuideButton').disabled = false;
+    setCameraGuideStatus(t('cameraGuideReady'));
+    setTimeout(() => { if ($('#cameraGuideDialog').open) setCameraGuideStatus(''); }, 1800);
+  } catch (error) {
+    console.error(error); releaseCameraGuide(); setCameraGuideStatus(cameraErrorMessage(error), 'error');
+  }
+}
+function closeCameraGuide() {
+  releaseCameraGuide();
+  const dialog = $('#cameraGuideDialog'); if (dialog.open) dialog.close();
+}
+function cameraFilename() {
+  const d = new Date(); const pad = value => String(value).padStart(2, '0');
+  return `after-${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}.jpg`;
+}
+async function captureCameraGuide() {
+  const video = $('#cameraGuideVideo');
+  if (!state.cameraStream || !video.videoWidth || !video.videoHeight) return;
+  const button = $('#captureCameraGuideButton'); button.disabled = true; setCameraGuideStatus(t('cameraGuideCapturing'));
+  try {
+    const canvas = document.createElement('canvas'); canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+    const ctx = canvas.getContext('2d', { alpha: false }); ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const blob = await new Promise((resolve, reject) => canvas.toBlob(value => value ? resolve(value) : reject(new Error('capture failed')), 'image/jpeg', .92));
+    const file = new File([blob], cameraFilename(), { type: 'image/jpeg', lastModified: Date.now() });
+    await setSource('compare', file);
+    closeCameraGuide(); toast(t('cameraGuideCaptured'), { tone: 'success' });
+  } catch (error) {
+    console.error(error); button.disabled = false; setCameraGuideStatus(t('cameraGuideCaptureError'), 'error');
+  }
+}
+
+function clearBlinkTimer() { if (state.blinkTimer) { clearInterval(state.blinkTimer); state.blinkTimer = 0; } }
+function clearIgnoreState() { state.ignoredRegions = []; state.ignoreDraft = null; state.ignoreMode = false; state.showIgnoredRegions = true; updateIgnoreUi(); }
+function updateMinAreaUi() {
+  const totalPixels = state.alignment ? state.alignment.width * state.alignment.height : Math.round(Number($('#maxEdgeSelect').value) * Number($('#maxEdgeSelect').value) * 0.7);
+  const ratio = Math.pow(Number($('#minAreaRange').value) / 100, 2) * 0.0009;
+  const value = Math.max(20, Math.round(totalPixels * ratio));
+  $('#minAreaValue').textContent = t('minAreaCurrent').replace('{value}', formatNumber(value));
+  return value;
+}
+function getMinAreaThreshold() { return updateMinAreaUi(); }
+function getIgnoredPixelRects(width, height) {
+  return state.ignoredRegions.map(region => ({
+    x: Math.max(0, Math.min(width - 1, Math.round(region.x * width))),
+    y: Math.max(0, Math.min(height - 1, Math.round(region.y * height))),
+    width: Math.max(1, Math.min(width, Math.round(region.width * width))),
+    height: Math.max(1, Math.min(height, Math.round(region.height * height)))
+  }));
+}
+function drawIgnoredRegions(ctx, width, height) {
+  const rects = getIgnoredPixelRects(width, height);
+  ctx.save();
+  ctx.lineWidth = Math.max(2, Math.round(Math.max(width, height) / 800));
+  ctx.strokeStyle = '#16624f';
+  ctx.fillStyle = 'rgba(22, 98, 79, 0.14)';
+  ctx.setLineDash([10, 6]);
+  if (state.showIgnoredRegions) {
+    for (const rect of rects) {
+      ctx.fillRect(rect.x, rect.y, rect.width, rect.height);
+      ctx.strokeRect(rect.x, rect.y, rect.width, rect.height);
+    }
+  }
+  if (state.ignoreDraft) {
+    const draft = state.ignoreDraft;
+    const x = Math.min(draft.x0, draft.x1); const y = Math.min(draft.y0, draft.y1);
+    const w = Math.max(1, Math.abs(draft.x1 - draft.x0)); const h = Math.max(1, Math.abs(draft.y1 - draft.y0));
+    ctx.fillStyle = 'rgba(22, 98, 79, 0.10)';
+    ctx.strokeStyle = '#16624f';
+    ctx.fillRect(x, y, w, h); ctx.strokeRect(x, y, w, h);
+  }
+  ctx.restore();
+}
+function updateIgnoreUi() {
+  const count = state.ignoredRegions.length;
+  $('#toggleIgnoreButton').classList.toggle('active', state.ignoreMode);
+  $('#toggleIgnoreButton').textContent = state.ignoreMode ? t('ignoreModeStop') : t('ignoreModeStart');
+  const visibilityButton = $('#toggleIgnoreVisibilityButton');
+  visibilityButton.disabled = count === 0;
+  visibilityButton.setAttribute('aria-checked', String(state.showIgnoredRegions));
+  $('#ignoreVisibilityLabel').textContent = state.showIgnoredRegions ? t('ignoreHideFrames') : t('ignoreShowFrames');
+  $('#undoIgnoreButton').disabled = count === 0;
+  $('#clearIgnoreButton').disabled = count === 0;
+  $('#ignoreCountChip').textContent = t('ignoreCount').replace('{count}', formatNumber(count));
+  $('#ignoreHint').textContent = state.ignoreMode ? t('ignoreHintActive') : t('ignoreHintIdle');
+}
+function stageMetrics() {
+  const stage = $('#resultStage'); const canvas = $('#resultCanvas');
+  return { stageWidth: Math.max(1, stage.clientWidth || 1), stageHeight: Math.max(1, stage.clientHeight || 1), width: Math.max(1, canvas.width || 1), height: Math.max(1, canvas.height || 1) };
+}
+function clampStagePan() {
+  const m = stageMetrics(); const totalScale = state.viewport.baseScale * state.viewport.zoom;
+  const contentWidth = m.width * totalScale; const contentHeight = m.height * totalScale;
+  if (contentWidth <= m.stageWidth) state.viewport.panX = (m.stageWidth - contentWidth) / 2;
+  else state.viewport.panX = Math.min(0, Math.max(m.stageWidth - contentWidth, state.viewport.panX));
+  if (contentHeight <= m.stageHeight) state.viewport.panY = (m.stageHeight - contentHeight) / 2;
+  else state.viewport.panY = Math.min(0, Math.max(m.stageHeight - contentHeight, state.viewport.panY));
+}
+function applyStageTransform() {
+  const content = $('#resultStageContent');
+  const totalScale = state.viewport.baseScale * state.viewport.zoom;
+  content.style.transform = `translate(${state.viewport.panX}px, ${state.viewport.panY}px) scale(${totalScale})`;
+  $('#stageZoomValue').textContent = `${formatNumber(state.viewport.zoom * 100, 0)}%`;
+}
+function fitStage(resetZoom = false) {
+  const stage = $('#resultStage'); const canvas = $('#resultCanvas');
+  if (!canvas.width || !canvas.height) return;
+  const stageWidth = Math.max(1, stage.clientWidth || 1);
+  const idealHeight = Math.min(window.innerHeight * (matchMedia('(max-width: 600px)').matches ? 0.54 : 0.68), stageWidth * (canvas.height / canvas.width));
+  stage.style.height = `${Math.max(matchMedia('(max-width: 600px)').matches ? 220 : 280, Math.round(idealHeight))}px`;
+  const m = stageMetrics();
+  state.viewport.baseScale = Math.min(m.stageWidth / m.width, m.stageHeight / m.height);
+  if (resetZoom) state.viewport.zoom = 1;
+  clampStagePan();
+  if (resetZoom || !Number.isFinite(state.viewport.panX) || !Number.isFinite(state.viewport.panY)) {
+    state.viewport.panX = (m.stageWidth - m.width * state.viewport.baseScale * state.viewport.zoom) / 2;
+    state.viewport.panY = (m.stageHeight - m.height * state.viewport.baseScale * state.viewport.zoom) / 2;
+  }
+  clampStagePan(); applyStageTransform();
+}
+function setZoom(nextZoom, anchorX = null, anchorY = null) {
+  nextZoom = Math.max(1, Math.min(5, nextZoom));
+  const oldTotal = state.viewport.baseScale * state.viewport.zoom;
+  const m = stageMetrics();
+  if (anchorX == null) anchorX = m.stageWidth / 2; if (anchorY == null) anchorY = m.stageHeight / 2;
+  const contentX = (anchorX - state.viewport.panX) / oldTotal; const contentY = (anchorY - state.viewport.panY) / oldTotal;
+  state.viewport.zoom = nextZoom;
+  const newTotal = state.viewport.baseScale * state.viewport.zoom;
+  state.viewport.panX = anchorX - contentX * newTotal; state.viewport.panY = anchorY - contentY * newTotal;
+  clampStagePan(); applyStageTransform();
+}
+function resetStageView() { state.viewport.zoom = 1; state.viewport.panX = 0; state.viewport.panY = 0; fitStage(true); }
+function getCanvasPointFromClient(clientX, clientY) {
+  const rect = $('#resultCanvas').getBoundingClientRect();
+  const x = Math.max(0, Math.min($('#resultCanvas').width, (clientX - rect.left) * ($('#resultCanvas').width / Math.max(rect.width, 1))));
+  const y = Math.max(0, Math.min($('#resultCanvas').height, (clientY - rect.top) * ($('#resultCanvas').height / Math.max(rect.height, 1))));
+  return { x, y };
+}
+function setView(view) {
+  state.view = view;
+  state.blinkFrame = 'reference';
+  state.blinkRunning = true;
+  clearBlinkTimer();
+  if (view === 'blink') {
+    $('#blinkToggleButton').textContent = t('blinkPause');
+    const cadence = Number($('#blinkSpeedSelect').value);
+    state.blinkTimer = setInterval(() => { if (!state.blinkRunning) return; state.blinkFrame = state.blinkFrame === 'reference' ? 'aligned' : 'reference'; renderResult(); }, cadence);
+  }
+  renderResult();
+}
+
+      const AppToast = (() => {
+        const root = $('#appToast'); const message = $('#appToastMessage'); const action = $('#appToastAction'); let timer = 0; let handler = null;
+        function dismiss() { clearTimeout(timer); timer = 0; root.classList.remove('show'); handler = null; }
+        function show({ message: text = '', actionLabel = '', onAction = null, duration = 3200, tone = 'default' } = {}) { clearTimeout(timer); message.textContent = String(text); root.dataset.tone = tone; handler = typeof onAction === 'function' ? onAction : null; action.textContent = actionLabel || ''; action.hidden = !handler || !actionLabel; root.classList.add('show'); if (duration > 0) timer = setTimeout(dismiss, duration); return Object.freeze({ dismiss }); }
+        action.addEventListener('click', () => { const current = handler; dismiss(); if (current) current(); });
+        return Object.freeze({ show, dismiss });
+      })();
+      window.AppToast = AppToast;
+      function toast(message, options = {}) { AppToast.show({ message, ...options }); }
+
+      function applyLanguage() {
+        const language = state.language;
+        document.documentElement.lang = language;
+        $$('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });
+        $$('[data-i18n-title]').forEach(el => { el.title = t(el.dataset.i18nTitle); });
+        $$('[data-i18n-aria-label]').forEach(el => { el.setAttribute('aria-label', t(el.dataset.i18nAriaLabel)); });
+        $('#languageButton').textContent = language === 'ja' ? 'EN' : '日本語';
+        $('#languageButton').setAttribute('aria-label', language === 'ja' ? '英語に切り替え' : 'Switch to Japanese');
+        document.title = language === 'ja' ? APP_CONFIG.nameJa : APP_CONFIG.name;
+        $('#brandName').textContent = language === 'ja' ? APP_CONFIG.nameJa : APP_CONFIG.name;
+        $('#footerName').textContent = language === 'ja' ? APP_CONFIG.nameJa : APP_CONFIG.name;
+        updatePhaseUi();
+        updateStatsUi();
+        updateResultSummary();
+        updateMinAreaUi();
+        updateIgnoreUi();
+        updateCameraGuideUi();
+        if (state.view === 'blink') $('#blinkToggleButton').textContent = state.blinkRunning ? t('blinkPause') : t('blinkResume');
+        if (state.result) renderResult();
+      }
+
+      function setPhase(phase, detail = '') {
+        state.phase = phase;
+        state.phaseDetail = detail;
+        updatePhaseUi();
+      }
+      function updatePhaseUi() {
+        const phase = state.phase;
+        const dot = $('#phaseDot');
+        dot.className = `phase-dot ${phase}`;
+        const keys = {
+          empty: ['phaseEmptyTitle', 'phaseEmptyDetail'], ready: ['phaseReadyTitle', 'phaseReadyDetail'], 'loading-runtime': ['phaseLoadingTitle', 'phaseLoadingDetail'], processing: ['phaseProcessingTitle', 'phaseProcessingDetail'], 'processing-diff': ['phaseDiffTitle', 'phaseDiffDetail'], result: ['phaseResultTitle', ''], error: ['phaseErrorTitle', '']
+        };
+        let [titleKey, detailKey] = keys[phase] || keys.empty;
+        if (phase === 'ready') detailKey = matchMedia('(max-width: 600px)').matches ? 'phaseReadyDetailMobile' : 'phaseReadyDetailDesktop';
+        $('#phaseTitle').textContent = t(titleKey);
+        $('#phaseDetail').textContent = state.phaseDetail || (detailKey ? t(detailKey) : '');
+        const busy = phase === 'loading-runtime' || phase === 'processing' || phase === 'processing-diff';
+        const ready = Boolean(state.sources.reference && state.sources.compare) && !busy;
+        $('#compareButton').disabled = !ready;
+        $('#mobileCompare').disabled = !ready;
+        $('#swapButton').disabled = !state.sources.reference || !state.sources.compare || busy;
+        const canSave = phase === 'result' && Boolean(state.result);
+        $('#saveButton').disabled = !canSave;
+        $('#mobileSave').disabled = !canSave;
+        updateCameraGuideUi();
+      }
+
+      function showError(message) { const box = $('#errorBox'); box.textContent = message; box.classList.add('show'); }
+      function clearError() { const box = $('#errorBox'); box.textContent = ''; box.classList.remove('show'); }
+      function invalidateResult(showNotice = false) {
+        state.generation += 1;
+        state.alignment = null;
+        state.result = null;
+        $('#resultSection').classList.remove('has-result');
+        $('#resultCanvas').width = 1; $('#resultCanvas').height = 1;
+        clearError();
+        clearBlinkTimer();
+        state.view = 'diff';
+        state.blinkFrame = 'reference';
+        setPhase(state.sources.reference && state.sources.compare ? 'ready' : 'empty');
+        if (showNotice) toast(t('sourceChanged'));
+      }
+
+      function isSupportedImage(file) {
+        if (/^image\/(jpeg|png|webp)$/i.test(file.type || '')) return true;
+        return /\.(jpe?g|png|webp)$/i.test(file.name || '');
+      }
+      async function decodeImage(file) {
+        if (typeof createImageBitmap === 'function') {
+          try {
+            const drawable = await createImageBitmap(file, { imageOrientation: 'from-image' });
+            return { drawable, width: drawable.width, height: drawable.height };
+          } catch { /* fallback below */ }
+        }
+        const url = URL.createObjectURL(file);
+        try {
+          const image = new Image();
+          await new Promise((resolve, reject) => { image.onload = resolve; image.onerror = reject; image.src = url; });
+          return { drawable: image, width: image.naturalWidth, height: image.naturalHeight };
+        } finally { URL.revokeObjectURL(url); }
+      }
+      function drawPreview(side) {
+        const source = state.sources[side];
+        const card = $(`#${side === 'reference' ? 'reference' : 'compare'}Card`);
+        const canvas = $(`#${side === 'reference' ? 'reference' : 'compare'}Preview`);
+        const fileEl = $(`#${side === 'reference' ? 'reference' : 'compare'}File`);
+        const detailEl = $(`#${side === 'reference' ? 'reference' : 'compare'}Detail`);
+        if (!source) { card.classList.remove('has-image'); canvas.width = 1; canvas.height = 1; fileEl.textContent = '—'; detailEl.textContent = '—'; return; }
+        const max = 1100; const scale = Math.min(1, max / Math.max(source.width, source.height));
+        canvas.width = Math.max(1, Math.round(source.width * scale)); canvas.height = Math.max(1, Math.round(source.height * scale));
+        const ctx = canvas.getContext('2d'); ctx.clearRect(0, 0, canvas.width, canvas.height); ctx.drawImage(source.drawable, 0, 0, canvas.width, canvas.height);
+        card.classList.add('has-image'); fileEl.textContent = source.file.name; detailEl.textContent = `${source.width} × ${source.height} · ${formatBytes(source.file.size)}`;
+      }
+      async function setSource(side, file) {
+        if (!file) return;
+        if (!isSupportedImage(file)) { toast(t('unsupportedImage'), { tone: 'warning' }); return; }
+        if (file.size > 40 * 1024 * 1024) { toast(t('fileTooLarge'), { tone: 'warning' }); return; }
+        const decodeToken = ++state.decodeGeneration[side];
+        state.generation += 1; // A source selection invalidates any in-flight comparison immediately.
+        clearError();
+        try {
+          const decoded = await decodeImage(file);
+          if (decodeToken !== state.decodeGeneration[side]) { closeDrawable(decoded); return; }
+          const old = state.sources[side];
+          state.sources[side] = { file, ...decoded };
+          closeDrawable(old);
+          drawPreview(side);
+          if (side === 'compare' && !state.outputTouched) $('#outputFilename').value = defaultOutputName(file.name);
+          clearIgnoreState();
+          invalidateResult(Boolean(old || state.result));
+        } catch (error) {
+          console.error(error); toast(t('decodeFailed'), { tone: 'warning' });
+        }
+      }
+      function removeSource(side) {
+        const old = state.sources[side]; if (!old) return; if (side === 'reference' && $('#cameraGuideDialog')?.open) closeCameraGuide(); state.sources[side] = null; closeDrawable(old); drawPreview(side); clearIgnoreState(); invalidateResult(Boolean(state.result)); updateCameraGuideUi();
+      }
+      function swapSources() {
+        if (!state.sources.reference || !state.sources.compare) return;
+        if ($('#cameraGuideDialog')?.open) closeCameraGuide();
+        [state.sources.reference, state.sources.compare] = [state.sources.compare, state.sources.reference];
+        drawPreview('reference'); drawPreview('compare'); clearIgnoreState(); invalidateResult(Boolean(state.result)); toast(t('swapped'));
+      }
+      function defaultOutputName(filename) { const base = (filename || '').replace(/\.[^.]+$/, '').trim() || APP_CONFIG.slug; return `${base}-diff`.slice(0, 120); }
+      function normalizedFilenameBase() {
+        const fallback = defaultOutputName(state.sources.compare?.file?.name || APP_CONFIG.slug);
+        const cleaned = $('#outputFilename').value.trim().replace(/[\\/:*?"<>|\u0000-\u001f]/g, '-').replace(/\.+$/g, '').trim();
+        let base = cleaned.replace(/\.png$/i, '') || fallback;
+        if (/^(con|prn|aux|nul|com[1-9]|lpt[1-9])$/i.test(base)) base = `${base}-file`;
+        $('#outputFilename').value = base.slice(0, 120);
+        return $('#outputFilename').value;
+      }
+
+      function processingCanvas(source, maxEdge) {
+        const scale = Math.min(1, maxEdge / Math.max(source.width, source.height));
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.max(1, Math.round(source.width * scale)); canvas.height = Math.max(1, Math.round(source.height * scale));
+        const ctx = canvas.getContext('2d', { alpha: false }); ctx.drawImage(source.drawable, 0, 0, canvas.width, canvas.height);
+        return canvas;
+      }
+      function cvCanvas(cv, mat) { const canvas = document.createElement('canvas'); canvas.width = mat.cols; canvas.height = mat.rows; cv.imshow(canvas, mat); return canvas; }
+
+      async function ensureOpenCv() {
+        if (state.cv) return state.cv;
+        if (state.cvPromise) return state.cvPromise;
+        state.cvPromise = (async () => {
+          if (!StandaloneAssets.has('opencv', 'runtime') || !StandaloneAssets.has('opencv', 'wasm')) throw new Error(t('runtimeMissing'));
+
+          // Do not give Emscripten a URL for the Wasm. connect-src is intentionally 'none'.
+          // This OpenCV/Emscripten build auto-starts as soon as opencv.js is evaluated and does not
+          // consume Module.wasmBinary, so provide Module.instantiateWasm before loading the runtime.
+          // The callback receives an instance created directly from the already-embedded bytes.
+          const wasmBytes = await StandaloneAssets.bytesAsync('opencv', 'wasm');
+          let initResolved = false;
+          const moduleConfig = {
+            // OpenCV 5.0.0 + current Emscripten does not necessarily include wasmBinary in
+            // INCOMING_MODULE_JS_API, so Module.wasmBinary can be silently ignored. The generated
+            // runtime does read Module.instantiateWasm, however. Instantiate the embedded bytes
+            // ourselves to guarantee that no fetch/XHR path is ever used.
+            instantiateWasm(imports, successCallback) {
+              const module = new WebAssembly.Module(wasmBytes);
+              const instance = new WebAssembly.Instance(module, imports);
+              successCallback(instance);
+              return instance.exports;
+            },
+            onRuntimeInitialized() { initResolved = true; }
+          };
+
+          try { delete window.cv; } catch { window.cv = undefined; }
+          window.Module = moduleConfig;
+
+          const runtimeSource = await StandaloneAssets.textAsync('opencv', 'runtime');
+          const runtimeUrl = URL.createObjectURL(new Blob([runtimeSource], { type: 'text/javascript' }));
+          try {
+            await new Promise((resolve, reject) => {
+              const script = document.createElement('script');
+              script.src = runtimeUrl;
+              script.onload = resolve;
+              script.onerror = () => reject(new Error('Failed to load embedded OpenCV runtime.'));
+              document.head.append(script);
+            });
+          } finally {
+            URL.revokeObjectURL(runtimeUrl);
+          }
+
+          const deadline = Date.now() + 30000;
+          let factoryStarted = false;
+          while (Date.now() < deadline) {
+            let api = window.cv;
+
+            // Some Emscripten/OpenCV builds expose the MODULARIZE factory itself, while current OpenCV.js
+            // commonly exposes a Promise. Support both forms and pass the same in-memory Wasm config.
+            if (!factoryStarted && typeof api === 'function' && !api.Mat) {
+              factoryStarted = true;
+              api = api(moduleConfig);
+              window.cv = api;
+            }
+            if (api && typeof api.then === 'function') {
+              api = await api;
+              window.cv = api;
+            }
+            if (api?.Mat && api?.ORB && api?.findHomography) {
+              state.cv = api;
+              return api;
+            }
+            if (initResolved && api?.Mat) {
+              state.cv = api;
+              return api;
+            }
+            await new Promise(resolve => setTimeout(resolve, 35));
+          }
+          throw new Error(t('runtimeMissing'));
+        })().catch(error => {
+          state.cvPromise = null;
+          throw error;
+        });
+        return state.cvPromise;
+      }
+
+      function createOrb(cv) {
+        let orb = null;
+        if (cv.ORB && typeof cv.ORB.create === 'function') orb = cv.ORB.create();
+        else if (typeof cv.ORB === 'function') orb = new cv.ORB();
+        if (!orb) throw new Error('cv.ORB is unavailable');
+        if (typeof orb.setMaxFeatures === 'function') orb.setMaxFeatures(3000);
+        if (typeof orb.setFastThreshold === 'function') orb.setFastThreshold(15);
+        return orb;
+      }
+      function createMatcher(cv) {
+        if (cv.BFMatcher && typeof cv.BFMatcher.create === 'function') return cv.BFMatcher.create(cv.NORM_HAMMING, false);
+        if (typeof cv.BFMatcher === 'function') return new cv.BFMatcher(cv.NORM_HAMMING, false);
+        throw new Error('cv.BFMatcher is unavailable');
+      }
+      function homographyLooksFinite(cv, H, sourceWidth, sourceHeight, refWidth, refHeight) {
+        const input = new cv.Mat(4, 1, cv.CV_32FC2); const output = new cv.Mat();
+        try {
+          input.data32F.set([0, 0, sourceWidth, 0, sourceWidth, sourceHeight, 0, sourceHeight]);
+          cv.perspectiveTransform(input, output, H);
+          const values = Array.from(output.data32F || []);
+          if (values.length < 8 || values.some(value => !Number.isFinite(value))) return false;
+          const xs = [values[0], values[2], values[4], values[6]]; const ys = [values[1], values[3], values[5], values[7]];
+          const width = Math.max(...xs) - Math.min(...xs); const height = Math.max(...ys) - Math.min(...ys);
+          return width > 8 && height > 8 && width < refWidth * 8 && height < refHeight * 8;
+        } finally { input.delete(); output.delete(); }
+      }
+
+      function alignImages(cv, referenceCanvas, compareCanvas) {
+        const ref = cv.imread(referenceCanvas); const cmp = cv.imread(compareCanvas);
+        const refGray = new cv.Mat(); const cmpGray = new cv.Mat(); const emptyMask = new cv.Mat();
+        const kpRef = new cv.KeyPointVector(); const kpCmp = new cv.KeyPointVector(); const descRef = new cv.Mat(); const descCmp = new cv.Mat();
+        const matches = new cv.DMatchVectorVector(); let orb = null; let matcher = null; let srcPts = null; let dstPts = null; let inlierMask = null; let H = null; let aligned = null; let validSrc = null; let validAligned = null;
+        try {
+          cv.cvtColor(ref, refGray, cv.COLOR_RGBA2GRAY); cv.cvtColor(cmp, cmpGray, cv.COLOR_RGBA2GRAY);
+          orb = createOrb(cv); orb.detectAndCompute(refGray, emptyMask, kpRef, descRef); orb.detectAndCompute(cmpGray, emptyMask, kpCmp, descCmp);
+          if (descRef.empty() || descCmp.empty() || kpRef.size() < 12 || kpCmp.size() < 12) throw new Error('NOT_ENOUGH_FEATURES');
+          matcher = createMatcher(cv); matcher.knnMatch(descCmp, descRef, matches, 2);
+          const src = []; const dst = []; let goodCount = 0;
+          for (let i = 0; i < matches.size(); i += 1) {
+            const pair = matches.get(i);
+            try {
+              if (pair.size() < 2) continue;
+              const first = pair.get(0); const second = pair.get(1);
+              if (first.distance >= 0.78 * second.distance) continue;
+              const pCmp = kpCmp.get(first.queryIdx).pt; const pRef = kpRef.get(first.trainIdx).pt;
+              src.push(pCmp.x, pCmp.y); dst.push(pRef.x, pRef.y); goodCount += 1;
+            } finally { safeDelete(pair); }
+          }
+          if (goodCount < 10) throw new Error('NOT_ENOUGH_FEATURES');
+          srcPts = new cv.Mat(goodCount, 1, cv.CV_32FC2); dstPts = new cv.Mat(goodCount, 1, cv.CV_32FC2); srcPts.data32F.set(src); dstPts.data32F.set(dst); inlierMask = new cv.Mat();
+          try { H = cv.findHomography(srcPts, dstPts, cv.RANSAC, 4.0, inlierMask, 2000, 0.995); }
+          catch { H = cv.findHomography(srcPts, dstPts, cv.RANSAC, 4.0, inlierMask); }
+          if (!H || H.empty()) throw new Error('HOMOGRAPHY_FAILED');
+          const inliers = cv.countNonZero(inlierMask); const inlierRatio = inliers / goodCount;
+          if (inliers < 8 || inlierRatio < 0.2 || !homographyLooksFinite(cv, H, cmp.cols, cmp.rows, ref.cols, ref.rows)) throw new Error('HOMOGRAPHY_FAILED');
+          aligned = new cv.Mat(); const dsize = new cv.Size(ref.cols, ref.rows);
+          cv.warpPerspective(cmp, aligned, H, dsize, cv.INTER_LINEAR, cv.BORDER_CONSTANT, new cv.Scalar(0, 0, 0, 0));
+          validSrc = new cv.Mat(cmp.rows, cmp.cols, cv.CV_8UC1, new cv.Scalar(255, 255, 255, 255)); validAligned = new cv.Mat();
+          cv.warpPerspective(validSrc, validAligned, H, dsize, cv.INTER_NEAREST, cv.BORDER_CONSTANT, new cv.Scalar(0, 0, 0, 0));
+          const overlapPixels = cv.countNonZero(validAligned); const overlapRatio = overlapPixels / (ref.rows * ref.cols);
+          if (overlapRatio < 0.25) throw new Error('OVERLAP_TOO_SMALL');
+          return { referenceCanvas, alignedCanvas: cvCanvas(cv, aligned), validCanvas: cvCanvas(cv, validAligned), width: ref.cols, height: ref.rows, goodMatches: goodCount, inliers, inlierRatio, overlapRatio };
+        } finally {
+          [ref, cmp, refGray, cmpGray, emptyMask, kpRef, kpCmp, descRef, descCmp, matches, srcPts, dstPts, inlierMask, H, aligned, validSrc, validAligned].forEach(safeDelete); safeDelete(orb); safeDelete(matcher);
+        }
+      }
+
+      function sensitivityThreshold() { const sensitivity = Number($('#sensitivityRange').value); return Math.round(62 - sensitivity * 0.5); }
+      function calculateDiff(cv, alignment) {
+        const ref = cv.imread(alignment.referenceCanvas); const aligned = cv.imread(alignment.alignedCanvas); const validRgba = cv.imread(alignment.validCanvas);
+        const refGray = new cv.Mat(); const alignedGray = new cv.Mat(); const valid = new cv.Mat(); const a = new cv.Mat(); const b = new cv.Mat(); const diff = new cv.Mat(); const rawMask = new cv.Mat(); const filtered = new cv.Mat(); const hierarchy = new cv.Mat(); const contours = new cv.MatVector(); let kernel = null;
+        try {
+          cv.cvtColor(ref, refGray, cv.COLOR_RGBA2GRAY); cv.cvtColor(aligned, alignedGray, cv.COLOR_RGBA2GRAY); cv.cvtColor(validRgba, valid, cv.COLOR_RGBA2GRAY);
+          if ($('#equalizeToggle').checked) { cv.equalizeHist(refGray, refGray); cv.equalizeHist(alignedGray, alignedGray); }
+          cv.GaussianBlur(refGray, a, new cv.Size(3, 3), 0, 0, cv.BORDER_DEFAULT); cv.GaussianBlur(alignedGray, b, new cv.Size(3, 3), 0, 0, cv.BORDER_DEFAULT);
+          cv.absdiff(a, b, diff); cv.threshold(diff, rawMask, sensitivityThreshold(), 255, cv.THRESH_BINARY); cv.bitwise_and(rawMask, valid, rawMask);
+          for (const rect of getIgnoredPixelRects(rawMask.cols, rawMask.rows)) {
+            const p1 = new cv.Point(rect.x, rect.y); const p2 = new cv.Point(rect.x + rect.width, rect.y + rect.height);
+            cv.rectangle(rawMask, p1, p2, new cv.Scalar(0, 0, 0, 0), -1);
+            cv.rectangle(valid, p1, p2, new cv.Scalar(0, 0, 0, 0), -1);
+          }
+          kernel = cv.getStructuringElement(cv.MORPH_ELLIPSE, new cv.Size(3, 3)); cv.morphologyEx(rawMask, rawMask, cv.MORPH_OPEN, kernel); cv.morphologyEx(rawMask, rawMask, cv.MORPH_CLOSE, kernel);
+          cv.findContours(rawMask, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
+          filtered.create(rawMask.rows, rawMask.cols, cv.CV_8UC1); filtered.setTo(new cv.Scalar(0, 0, 0, 0));
+          const minArea = getMinAreaThreshold(); const regions = [];
+          for (let i = 0; i < contours.size(); i += 1) {
+            const contour = contours.get(i);
+            try {
+              const area = cv.contourArea(contour, false); if (area < minArea) continue;
+              const rect = cv.boundingRect(contour); regions.push({ x: rect.x, y: rect.y, width: rect.width, height: rect.height, area }); cv.drawContours(filtered, contours, i, new cv.Scalar(255, 255, 255, 255), -1);
+            } finally { safeDelete(contour); }
+          }
+          regions.sort((x, y) => y.area - x.area);
+          const changedPixels = cv.countNonZero(filtered); const validPixels = Math.max(1, cv.countNonZero(valid)); const changedPercent = changedPixels / validPixels * 100;
+          const maskData = new Uint8Array(filtered.data); const overlay = document.createElement('canvas'); overlay.width = filtered.cols; overlay.height = filtered.rows; const octx = overlay.getContext('2d'); const image = octx.createImageData(filtered.cols, filtered.rows);
+          for (let i = 0, p = 0; i < maskData.length; i += 1, p += 4) { if (maskData[i] > 0) { image.data[p] = 217; image.data[p + 1] = 48; image.data[p + 2] = 37; image.data[p + 3] = 112; } }
+          octx.putImageData(image, 0, 0);
+          return { regions, changedPercent, changedPixels, validPixels, overlayCanvas: overlay };
+        } finally { [ref, aligned, validRgba, refGray, alignedGray, valid, a, b, diff, rawMask, filtered, hierarchy, contours, kernel].forEach(safeDelete); }
+      }
+
+      function qualityKey(alignment) { if (!alignment) return ''; if (alignment.inliers >= 35 && alignment.inlierRatio >= 0.48) return 'qualityHigh'; if (alignment.inliers >= 16 && alignment.inlierRatio >= 0.30) return 'qualityMedium'; return 'qualityLow'; }
+      function updateStatsUi() {
+        if (!state.alignment || !state.result) return;
+        $('#qualityStat').textContent = t(qualityKey(state.alignment));
+        $('#matchStat').textContent = `${formatNumber(state.alignment.goodMatches)} / ${formatNumber(state.alignment.inliers)}`;
+        $('#changeStat').textContent = `${formatNumber(state.result.changedPercent, state.result.changedPercent < 1 ? 2 : 1)}%`;
+        $('#regionStat').textContent = formatNumber(state.result.regions.length);
+        $('#resultResolution').textContent = `${state.alignment.width} × ${state.alignment.height}`;
+      }
+      function updateResultSummary() {
+        if (!state.alignment || !state.result) return;
+        if (state.result.regions.length === 0) { $('#resultSummary').textContent = t('noChangeSummary'); return; }
+        $('#resultSummary').textContent = t('resultSummary').replace('{inliers}', formatNumber(state.alignment.inliers)).replace('{changed}', formatNumber(state.result.changedPercent, state.result.changedPercent < 1 ? 2 : 1));
+      }
+
+function renderResult() {
+  if (!state.alignment || !state.result) return;
+  const canvas = $('#resultCanvas'); const { width, height, referenceCanvas, alignedCanvas } = state.alignment;
+  if (canvas.width !== width || canvas.height !== height) { canvas.width = width; canvas.height = height; $('#resultStageContent').style.width = `${width}px`; $('#resultStageContent').style.height = `${height}px`; fitStage(true); }
+  const ctx = canvas.getContext('2d'); ctx.clearRect(0, 0, width, height);
+  const slider = Number($('#sliderRange').value) / 100;
+  const drawLabel = (text, x, align='left') => {
+    ctx.save(); ctx.font = `${Math.max(13, Math.round(Math.max(width,height)/55))}px sans-serif`; ctx.textAlign = align; ctx.textBaseline = 'top';
+    const padding = 8; const metrics = ctx.measureText(text); const boxWidth = metrics.width + padding * 2; const tx = align === 'left' ? x : x - boxWidth;
+    ctx.fillStyle = 'rgba(32,33,31,.62)'; ctx.fillRect(tx, 10, boxWidth, 28); ctx.fillStyle = '#fff'; ctx.fillText(text, tx + padding, 16); ctx.restore();
+  };
+  if (state.view === 'reference') ctx.drawImage(referenceCanvas, 0, 0);
+  else if (state.view === 'aligned') ctx.drawImage(alignedCanvas, 0, 0);
+  else if (state.view === 'overlay') { ctx.drawImage(referenceCanvas, 0, 0); ctx.globalAlpha = Number($('#overlayRange').value) / 100; ctx.drawImage(alignedCanvas, 0, 0); ctx.globalAlpha = 1; }
+  else if (state.view === 'slider') {
+    ctx.drawImage(referenceCanvas, 0, 0);
+    ctx.save(); ctx.beginPath(); ctx.rect(0, 0, width * slider, height); ctx.clip(); ctx.drawImage(alignedCanvas, 0, 0); ctx.restore();
+    const x = Math.round(width * slider); ctx.strokeStyle = '#ffffff'; ctx.lineWidth = Math.max(3, Math.round(width / 500)); ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, height); ctx.stroke();
+    drawLabel(t('sliderLeft'), 12, 'left'); drawLabel(t('sliderRight'), width - 12, 'right');
+  }
+  else if (state.view === 'blink') {
+    if (state.blinkFrame === 'aligned') { ctx.drawImage(alignedCanvas, 0, 0); drawLabel(t('overlayAfter'), 12, 'left'); }
+    else { ctx.drawImage(referenceCanvas, 0, 0); drawLabel(t('overlayBefore'), 12, 'left'); }
+  }
+  else {
+    ctx.drawImage(referenceCanvas, 0, 0); ctx.drawImage(state.result.overlayCanvas, 0, 0);
+    const lineWidth = Math.max(2, Math.round(Math.max(width, height) / 700)); ctx.lineWidth = lineWidth; ctx.strokeStyle = '#d93025'; ctx.setLineDash([]);
+    for (const rect of state.result.regions.slice(0, 80)) ctx.strokeRect(rect.x + lineWidth / 2, rect.y + lineWidth / 2, Math.max(1, rect.width - lineWidth), Math.max(1, rect.height - lineWidth));
+  }
+  drawIgnoredRegions(ctx, width, height);
+  $('#overlayControl').classList.toggle('show', state.view === 'overlay');
+  $('#sliderControl').classList.toggle('show', state.view === 'slider');
+  $('#blinkControl').classList.toggle('show', state.view === 'blink');
+  const hintKeys = { diff: 'viewHintDiff', overlay: 'viewHintOverlay', slider: 'viewHintSlider', blink: 'viewHintBlink', reference: 'viewHintReference', aligned: 'viewHintAligned' };
+  $('#viewExplainer').textContent = t(hintKeys[state.view] || 'viewHintDiff');
+  $('#stageModeHint').textContent = state.ignoreMode ? t('ignoreHintActive') : '';
+  if (state.view === 'reference' || state.view === 'aligned') $('#sourceViewDetails').open = true;
+  $$('[data-view]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.view === state.view)));
+  $('#sliderValue').textContent = `${$('#sliderRange').value}%`;
+}
+
+function mapProcessingError(error) {
+        const code = String(error?.message || error || '');
+        if (code.includes('NOT_ENOUGH_FEATURES')) return t('notEnoughFeatures');
+        if (code.includes('HOMOGRAPHY_FAILED')) return t('homographyFailed');
+        if (code.includes('OVERLAP_TOO_SMALL')) return t('overlapTooSmall');
+        if (code.includes('Embedded asset') || code.includes('OpenCV') || code.includes('cv.') || code.includes('wasm') || code.includes('WASM')) return t('runtimeMissing');
+        return `${t('genericError')} ${code}`.trim();
+      }
+
+      async function runComparison() {
+        if (!state.sources.reference || !state.sources.compare || state.phase === 'processing' || state.phase === 'loading-runtime') return;
+        const generation = state.generation; clearError();
+        try {
+          setPhase('loading-runtime'); await nextFrame(); const cv = await ensureOpenCv(); if (generation !== state.generation) return;
+          setPhase('processing'); await nextFrame();
+          const maxEdge = Number($('#maxEdgeSelect').value); const referenceCanvas = processingCanvas(state.sources.reference, maxEdge); const compareCanvas = processingCanvas(state.sources.compare, maxEdge);
+          const alignment = alignImages(cv, referenceCanvas, compareCanvas); if (generation !== state.generation) return;
+          state.alignment = alignment; state.result = calculateDiff(cv, alignment); setView('diff');
+          $('#resultSection').classList.add('has-result'); setPhase('result'); updateStatsUi(); updateResultSummary(); updateMinAreaUi(); renderResult(); fitStage(true);
+          toast(t('compareComplete'), { tone: 'success' });
+          if (matchMedia('(max-width: 600px)').matches) $('#resultSection').scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
+        } catch (error) {
+          console.error(error); state.alignment = null; state.result = null; $('#resultSection').classList.remove('has-result'); const message = mapProcessingError(error); showError(message); setPhase('error', message);
+        }
+      }
+
+      let diffRefreshTimer = 0;
+      function scheduleDiffRefresh() {
+        if (!state.alignment || !state.cv || state.phase === 'processing' || state.phase === 'loading-runtime') return;
+        clearTimeout(diffRefreshTimer);
+        diffRefreshTimer = setTimeout(async () => {
+          const generation = state.generation;
+          try { setPhase('processing-diff'); await nextFrame(); if (generation !== state.generation) return; state.result = calculateDiff(state.cv, state.alignment); setPhase('result'); updateStatsUi(); updateResultSummary(); updateMinAreaUi(); renderResult(); }
+          catch (error) { console.error(error); const message = mapProcessingError(error); showError(message); setPhase('error', message); }
+        }, 80);
+      }
+
+      function saveResult() {
+        if (!state.result || state.phase !== 'result') return;
+        const canvas = $('#resultCanvas'); const filename = `${normalizedFilenameBase()}.png`;
+        canvas.toBlob(blob => { if (!blob) return; const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = filename; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); toast(t('saved'), { tone: 'success' }); }, 'image/png');
+      }
+
+      function bindDropzone(side, zone, input) {
+        zone.addEventListener('click', event => { if (event.target.closest('[data-remove],[data-replace]')) return; input.click(); });
+        zone.addEventListener('keydown', event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); input.click(); } });
+        input.addEventListener('change', () => { const file = input.files?.[0]; input.value = ''; setSource(side, file); });
+        ['dragenter', 'dragover'].forEach(name => zone.addEventListener(name, event => { event.preventDefault(); zone.classList.add('is-dragging'); }));
+        ['dragleave', 'drop'].forEach(name => zone.addEventListener(name, event => { event.preventDefault(); zone.classList.remove('is-dragging'); }));
+        zone.addEventListener('drop', event => setSource(side, event.dataTransfer?.files?.[0]));
+      }
+
+      bindDropzone('reference', $('#referenceDropzone'), $('#referenceInput')); bindDropzone('compare', $('#compareDropzone'), $('#compareInput'));
+      $$('[data-replace]').forEach(button => button.addEventListener('click', () => $(`#${button.dataset.replace}Input`).click()));
+      $$('[data-remove]').forEach(button => button.addEventListener('click', () => removeSource(button.dataset.remove)));
+      $('#swapButton').addEventListener('click', swapSources); $('#compareButton').addEventListener('click', runComparison); $('#saveButton').addEventListener('click', saveResult);
+      $('#sensitivityRange').addEventListener('input', () => { $('#sensitivityValue').textContent = $('#sensitivityRange').value; });
+      $('#minAreaRange').addEventListener('input', () => { updateMinAreaUi(); });
+      $('#sensitivityRange').addEventListener('change', scheduleDiffRefresh); $('#minAreaRange').addEventListener('change', scheduleDiffRefresh); $('#equalizeToggle').addEventListener('change', scheduleDiffRefresh);
+      $('#maxEdgeSelect').addEventListener('change', () => { updateMinAreaUi(); if (state.alignment) { invalidateResult(false); toast(t('processingSizeChanged'), { tone: 'warning' }); } });
+      $$('[data-view]').forEach(button => button.addEventListener('click', () => { setView(button.dataset.view); }));
+      $('#overlayRange').addEventListener('input', () => { $('#overlayValue').textContent = `${$('#overlayRange').value}%`; if (state.view === 'overlay') renderResult(); });
+      $('#sliderRange').addEventListener('input', () => { $('#sliderValue').textContent = `${$('#sliderRange').value}%`; if (state.view === 'slider') renderResult(); });
+      $('#blinkSpeedSelect').addEventListener('change', () => { if (state.view === 'blink') setView('blink'); });
+      $('#blinkToggleButton').addEventListener('click', () => { state.blinkRunning = !state.blinkRunning; $('#blinkToggleButton').textContent = state.blinkRunning ? t('blinkPause') : t('blinkResume'); if (!state.blinkRunning) state.blinkFrame = state.blinkFrame === 'reference' ? 'reference' : 'aligned'; renderResult(); });
+      $('#outputFilename').addEventListener('input', () => { state.outputTouched = true; }); $('#outputFilename').addEventListener('blur', normalizedFilenameBase);
+
+
+$('#zoomInButton').addEventListener('click', () => setZoom(state.viewport.zoom * 1.25));
+$('#zoomOutButton').addEventListener('click', () => setZoom(state.viewport.zoom / 1.25));
+$('#fitViewButton').addEventListener('click', resetStageView);
+$('#toggleIgnoreButton').addEventListener('click', () => { state.ignoreMode = !state.ignoreMode; if (state.ignoreMode) state.showIgnoredRegions = true; state.ignoreDraft = null; updateIgnoreUi(); renderResult(); });
+$('#toggleIgnoreVisibilityButton').addEventListener('click', () => { if (!state.ignoredRegions.length) return; state.showIgnoredRegions = !state.showIgnoredRegions; updateIgnoreUi(); renderResult(); });
+$('#undoIgnoreButton').addEventListener('click', () => { if (!state.ignoredRegions.length) return; state.ignoredRegions.pop(); updateIgnoreUi(); if (state.alignment) scheduleDiffRefresh(); toast(t('ignoreRemoved')); });
+$('#clearIgnoreButton').addEventListener('click', () => { if (!state.ignoredRegions.length) return; state.ignoredRegions = []; updateIgnoreUi(); if (state.alignment) scheduleDiffRefresh(); toast(t('ignoreCleared')); });
+const resultStage = $('#resultStage');
+resultStage.addEventListener('pointerdown', event => {
+  if (!state.result) return;
+  resultStage.setPointerCapture(event.pointerId);
+  stageInteraction.pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+  if (state.ignoreMode && stageInteraction.pointers.size === 1) {
+    const point = getCanvasPointFromClient(event.clientX, event.clientY);
+    state.ignoreDraft = { x0: point.x, y0: point.y, x1: point.x, y1: point.y };
+    stageInteraction.mode = 'ignore'; renderResult(); return;
+  }
+  if (stageInteraction.pointers.size === 2) {
+    const pts = Array.from(stageInteraction.pointers.values());
+    stageInteraction.mode = 'pinch';
+    stageInteraction.pinchStartDistance = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+    stageInteraction.pinchStartZoom = state.viewport.zoom;
+    const rect = resultStage.getBoundingClientRect();
+    const midX = (pts[0].x + pts[1].x) / 2 - rect.left; const midY = (pts[0].y + pts[1].y) / 2 - rect.top;
+    const total = state.viewport.baseScale * state.viewport.zoom;
+    stageInteraction.anchor = { x: midX, y: midY, contentX: (midX - state.viewport.panX) / total, contentY: (midY - state.viewport.panY) / total };
+    return;
+  }
+  stageInteraction.mode = 'pan'; stageInteraction.lastX = event.clientX; stageInteraction.lastY = event.clientY;
+});
+resultStage.addEventListener('pointermove', event => {
+  if (!stageInteraction.pointers.has(event.pointerId)) return;
+  stageInteraction.pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+  if (stageInteraction.mode === 'ignore' && state.ignoreDraft) {
+    const point = getCanvasPointFromClient(event.clientX, event.clientY); state.ignoreDraft.x1 = point.x; state.ignoreDraft.y1 = point.y; renderResult(); return;
+  }
+  if (stageInteraction.pointers.size >= 2 && stageInteraction.mode === 'pinch') {
+    const pts = Array.from(stageInteraction.pointers.values());
+    const distance = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+    const rect = resultStage.getBoundingClientRect(); const midX = (pts[0].x + pts[1].x) / 2 - rect.left; const midY = (pts[0].y + pts[1].y) / 2 - rect.top;
+    const zoom = Math.max(1, Math.min(5, stageInteraction.pinchStartZoom * (distance / Math.max(stageInteraction.pinchStartDistance, 1))));
+    state.viewport.zoom = zoom;
+    const total = state.viewport.baseScale * state.viewport.zoom;
+    const anchor = stageInteraction.anchor || { x: midX, y: midY, contentX: midX / total, contentY: midY / total };
+    state.viewport.panX = midX - anchor.contentX * total; state.viewport.panY = midY - anchor.contentY * total; clampStagePan(); applyStageTransform();
+    return;
+  }
+  if (stageInteraction.mode === 'pan') {
+    state.viewport.panX += event.clientX - stageInteraction.lastX; state.viewport.panY += event.clientY - stageInteraction.lastY; stageInteraction.lastX = event.clientX; stageInteraction.lastY = event.clientY; clampStagePan(); applyStageTransform();
+  }
+});
+function finishStagePointer(event) {
+  if (stageInteraction.pointers.has(event.pointerId)) stageInteraction.pointers.delete(event.pointerId);
+  if (stageInteraction.mode === 'ignore' && state.ignoreDraft) {
+    const draft = state.ignoreDraft; const x = Math.min(draft.x0, draft.x1); const y = Math.min(draft.y0, draft.y1); const w = Math.abs(draft.x1 - draft.x0); const h = Math.abs(draft.y1 - draft.y0);
+    if (w >= 8 && h >= 8) {
+      state.ignoredRegions.push({ x: x / Math.max($('#resultCanvas').width,1), y: y / Math.max($('#resultCanvas').height,1), width: w / Math.max($('#resultCanvas').width,1), height: h / Math.max($('#resultCanvas').height,1) });
+      toast(t('ignoreAdded')); updateIgnoreUi(); if (state.alignment) scheduleDiffRefresh();
+    }
+    state.ignoreDraft = null; renderResult();
+  }
+  if (stageInteraction.pointers.size < 2) stageInteraction.mode = stageInteraction.pointers.size ? 'pan' : '';
+}
+['pointerup','pointercancel','pointerleave'].forEach(name => resultStage.addEventListener(name, finishStagePointer));
+window.addEventListener('resize', () => { if (state.result) fitStage(false); });
+
+
+const cameraGuideDialog = $('#cameraGuideDialog');
+$('#openCameraGuideButton').addEventListener('click', openCameraGuide);
+$('#closeCameraGuideButton').addEventListener('click', closeCameraGuide);
+$('#cancelCameraGuideButton').addEventListener('click', closeCameraGuide);
+$('#captureCameraGuideButton').addEventListener('click', captureCameraGuide);
+$('#cameraGuideOpacity').addEventListener('input', () => { const value = Number($('#cameraGuideOpacity').value); $('#cameraGuideOpacityValue').textContent = `${value}%`; $('#cameraGuideBefore').style.opacity = String(value / 100); });
+$('#cameraGuideOverlayToggle').addEventListener('click', () => { state.cameraOverlayVisible = !state.cameraOverlayVisible; $('#cameraGuideBefore').style.display = state.cameraOverlayVisible ? '' : 'none'; $('#cameraGuideOverlayToggle').setAttribute('aria-pressed', String(state.cameraOverlayVisible)); $('#cameraGuideOverlayToggle').textContent = state.cameraOverlayVisible ? t('cameraGuideHideBefore') : t('cameraGuideShowBefore'); });
+cameraGuideDialog.addEventListener('close', releaseCameraGuide);
+cameraGuideDialog.addEventListener('cancel', event => { event.preventDefault(); closeCameraGuide(); });
+
+      $('#languageButton').addEventListener('click', () => { state.language = state.language === 'ja' ? 'en' : 'ja'; writeStorage(storageKey, state.language); applyLanguage(); });
+      const readyMedia = matchMedia('(max-width: 600px)'); if (readyMedia.addEventListener) readyMedia.addEventListener('change', updatePhaseUi);
+      const helpDialog = $('#helpDialog'); $('#helpButton').addEventListener('click', () => helpDialog.showModal()); $('#closeHelpButton').addEventListener('click', () => helpDialog.close()); helpDialog.addEventListener('click', event => { const rect = helpDialog.getBoundingClientRect(); if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) helpDialog.close(); });
+
+      $('#mobileBar').addEventListener('click', event => {
+        const button = event.target.closest('.mobile-item'); if (!button || button.disabled) return;
+        if (button.dataset.target) { document.getElementById(button.dataset.target)?.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' }); }
+        if (button.dataset.action === 'compare') runComparison(); if (button.dataset.action === 'save') saveResult();
+      });
+
+      if ('IntersectionObserver' in window) {
+        const sectionButtons = $$('[data-target]');
+        const observer = new IntersectionObserver(entries => {
+          const visible = entries.filter(entry => entry.isIntersecting).sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+          if (!visible) return;
+          sectionButtons.forEach(button => button.classList.toggle('is-active', button.dataset.target === visible.target.id));
+        }, { rootMargin: '-25% 0px -55% 0px', threshold: [0, .1, .25, .5] });
+        [$('#sourceSection'), $('#resultSection')].forEach(section => section && observer.observe(section));
+      }
+
+      $('#versionBadge').textContent = `v${APP_CONFIG.version}`; $('#outputFilename').value = defaultOutputName(APP_CONFIG.slug); $('#buildMeta').textContent = `v${APP_CONFIG.version} · ${BUILD_MANIFEST.generatedAtUtc || 'local build'}`; updateMinAreaUi(); updateIgnoreUi(); applyLanguage(); updatePhaseUi();
+    })();
+  </script>
+</body>
+</html>
