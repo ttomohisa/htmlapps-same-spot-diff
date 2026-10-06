@@ -20,6 +20,7 @@ GitHub Pages delivers the initial HTML. After it loads, image alignment, differe
 
 - Automatically align small camera-position, rotation, and perspective differences before comparing photos
 - Highlight detected changes in red
+- Step through every detected region with **Previous change / Next change**, a position count, and automatic zoom/pan
 - Show alignment quality, changed area, and number of changed regions at a glance
 - **After camera guide**: overlay the Before photo on the live camera preview to help reproduce the same shooting position
 - Compare Before / After with a draggable split slider
@@ -63,6 +64,14 @@ The normal comparison features work from the generated single HTML without a ser
 6. Open **Tune the result** only when the red highlighting is too sensitive or not sensitive enough.
 7. Add **ignored areas** for places that naturally change every time, such as a clock, reflection, monitor, moving leaves, or similar regions.
 8. Zoom and pan for a closer look, then save the current view as PNG if needed.
+
+### Step through changes
+
+Use **Next change** to focus the first detected region, then **Next change / Previous change** to visit every region from largest to smallest. The counter starts at 0 of N; the buttons stop at either end. This includes regions beyond the first 80 red outlines. **Reset view** returns to the overview and clears the position. Switching between Diff, alignment, slider, Blink, or individual images keeps your position.
+
+Navigation changes only zoom and pan within the existing limits. It does not crop the saved PNG or change statistics, masks, or the selected result view. A new comparison, difference-setting update, or image replacement resets the position.
+
+Selecting a supported image up to 40 MB clears the old result and ignored areas immediately. Compare and Save are disabled during decoding. If decoding fails, the prior image stays available, but you must compare again. Cancelling the picker or selecting an unsupported or oversized file leaves the valid source and result intact.
 
 ### After camera guide
 
@@ -259,3 +268,7 @@ Bug reports and feature proposals are welcome through GitHub Issues. See [CONTRI
 Copyright © 2026 ttomohisa
 
 Licensed under the [MIT License](LICENSE).
+
+### Runtime regression tests
+
+Run `node --test tests/*.test.cjs` with Node.js 22 or newer; no npm installation is required. The repository check also runs these tests against the source, readable release, decoded self-extract release, and checked-in `same-spot-diff.html`. After rebuilding, copy `dist/index.html` to `same-spot-diff.html` when updating the checked-in release. Tests use synthetic DOM/canvas and controlled image-decoding/OpenCV boundaries, not a browser. Optional `SAME_SPOT_REAL_CANVAS=1` checks use `@napi-rs/canvas` when already installed to compare actual synthetic PNG bytes.

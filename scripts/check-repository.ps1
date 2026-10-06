@@ -164,4 +164,19 @@ $buildArguments = @{}
 if ($ForceDownload) { $buildArguments.ForceDownload = $true }
 & (Join-Path $Root "build-standalone.ps1") @buildArguments
 
+# Run the same behavioral suite against editable and shipped runtime variants.
+$node = Get-Command node -ErrorAction SilentlyContinue
+if (-not $node) { throw "Node.js 22 or newer is required for runtime regression tests." }
+$testFiles = @(Get-ChildItem (Join-Path $Root "tests") -Filter "*.test.cjs" | ForEach-Object { $_.FullName })
+$previousHtml = $env:SAME_SPOT_HTML
+try {
+  foreach ($runtimePath in @("src/index.template.html", "dist/index.html", "dist/index.self-extract.html", "same-spot-diff.html")) {
+    $env:SAME_SPOT_HTML = Join-Path $Root $runtimePath
+    & $node.Source --test @testFiles
+    if ($LASTEXITCODE -ne 0) { throw "Runtime regression tests failed: $runtimePath" }
+  }
+} finally {
+  $env:SAME_SPOT_HTML = $previousHtml
+}
+
 Write-Host "[OK] Repository check passed." -ForegroundColor Green
