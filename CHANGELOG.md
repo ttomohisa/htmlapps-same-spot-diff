@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- Add Previous change / Next change controls with a localized position count, all-region traversal, and padded viewport focus. Keep the active view, PNG pixels, statistics, and ignore settings unchanged.
+- Reset region navigation on result changes and Reset view; disable boundary directions instead of wrapping.
+- Clear stale alignment/results and ignored areas immediately when a supported, size-valid replacement starts decoding; gate comparison and export while either slot is pending.
+- Reject obsolete decode successes/errors, comparisons, queued diff refreshes, and PNG callbacks. Cancelled/rejected selections keep the existing result; failed accepted decodes retain the old image for a fresh comparison.
+- Add dependency-free inline-runtime regression tests and release-variant checks.
+
 ## 1.0.0 - Same Spot Diff - 2026-08-20
 
 - Implemented local Before / After image comparison with custom OpenCV WASM.

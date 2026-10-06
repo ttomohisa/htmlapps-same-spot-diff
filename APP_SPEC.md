@@ -55,6 +55,8 @@ A successful session ends with:
 ## 5. Async phases
 
 - `empty`: fewer than two images loaded.
+- `decoding`: one or both accepted image selections are decoding; Compare, Swap, Save, and region navigation are disabled.
+- `processing-diff`: a difference-only refresh is queued or running; Save and region navigation are disabled.
 - `ready`: both images loaded and comparison can start.
 - `loading-runtime`: embedded OpenCV JS/Wasm is being initialized.
 - `processing`: alignment or difference calculation is running.
@@ -121,3 +123,16 @@ A monotonic source generation token prevents stale image-decode / processing res
 - Ignore user-marked rectangular regions during difference calculation. Ignored regions remain effective when their visual outlines are hidden.
 - Scale the minimum-change-area threshold relative to the processed image area.
 - Show touch-specific pinch guidance only on smartphones; avoid redundant touch wording on desktop.
+
+
+## Changed-region navigation and source replacement
+
+- Previous change / Next change sit beside the result viewport controls, with a polite live Japanese/English count.
+- Start at 0 of N (no focused region); Next selects the first region. Walk every region in the existing descending contour-area order, including regions beyond the 80 outlined in the Diff canvas. Do not wrap. Disable unavailable directions and both buttons for zero regions or non-result phases.
+- Focus by changing only the viewport transform. Aim for 24 CSS-pixel padding on each edge, clamped to the existing 1–5 zoom and pan limits. At edges or the minimum zoom, full padding may not be possible.
+- Keep the selected result mode, canvas pixels, saved PNG, statistics, ignored areas, and settings unchanged by navigation. Reset view clears the focused-region position and returns to the overview. Switching result modes preserves the position.
+- Reset the region position whenever a source/result is invalidated, a new comparison is published, or a difference refresh is scheduled.
+- Accepting a supported image of at most 40 MB immediately clears alignment, result/export readiness, ignored areas, and the navigation position before decoding starts. Cancelled pickers, unsupported formats, and oversized files preserve the current valid source/result.
+- Keep the prior decoded source until the replacement decodes successfully; if decoding fails, retain that source, show the error, and require comparison again. Track pending decodes independently for both slots.
+- A newer selection or removal invalidates a slot's previous decode success and failure. Obsolete comparison, difference-refresh, and PNG serialization callbacks cannot overwrite or export newer state.
+- Automated checks execute the inline runtime with synthetic DOM/canvas inputs and controlled async boundaries. They do not substitute for native browser, camera, or OpenCV alignment verification.
