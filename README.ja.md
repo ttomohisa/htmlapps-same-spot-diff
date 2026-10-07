@@ -34,7 +34,7 @@ GitHub Pagesから最初のHTMLを読み込んだ後、位置合わせ、差分�
 - 差分設定だけ変更した場合は位置合わせ結果を再利用し、不要な再計算を減らす
 - JPEG / PNG / WebP対応
 - 表示中の結果をPNG保存
-- 日本語 / English切替
+- ヘッダーのEN / JAで日本語・英語を切替（切替先の説明とヘルプも各言語で表示）
 - SVG favicon内蔵
 - OpenCV JavaScript / WebAssemblyを生成HTMLへ内包
 - 実行時の分析ツール、アップロードAPI、CDN、GitHubダウンロードなし

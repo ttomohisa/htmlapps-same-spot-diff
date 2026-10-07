@@ -90,6 +90,7 @@ A monotonic source generation token prevents stale image-decode / processing res
 - The main Compare action stays easy to reach on smartphones via the reusable mobile bottom bar.
 - Result Save stays disabled until a valid current result exists.
 - Controls use labels, SVG icons, visible focus, and `aria-live` status.
+- The header language button displays the target language: `EN` in Japanese and `JA` in English, with matching localized accessible names and tooltips. Help keeps a localized name and tooltip. The Japanese privacy badge reads `完全ローカル処理`.
 - Help explains conditions where homography is unreliable: little texture, very different viewpoints, moving camera around a non-planar scene, or large lighting changes.
 - Reduced-motion preference is respected.
 

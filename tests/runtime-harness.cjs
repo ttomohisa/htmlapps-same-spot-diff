@@ -8,7 +8,7 @@ const payload = html.match(/<script\s+id="self-extract-payload"\s+type="applicat
 if (payload) html = require('node:zlib').gunzipSync(Buffer.from(payload[1].replace(/\s/g, ''), 'base64')).toString('utf8');
 const nativeCanvas = process.env.SAME_SPOT_REAL_CANVAS === '1' ? require('@napi-rs/canvas') : null;
 
-function fixture({ language = 'en', stageWidth = 600, stageHeight = 400 } = {}) {
+function fixture({ language = 'en', storage = new Map(), stageWidth = 600, stageHeight = 400 } = {}) {
   const nodes = [], ids = new Map(), timers = new Map(), frames = [], decodes = [], imageLoads = [], blobs = [], downloads = [], errors = [], urls = new Map();
   let nextTimer = 1;
   function element(tag = 'div', attrs = {}) {
@@ -54,7 +54,7 @@ function fixture({ language = 'en', stageWidth = 600, stageHeight = 400 } = {}) 
   };
   const document = { querySelector: s => queryAll(s)[0] || null, querySelectorAll: queryAll, getElementById: id => ids.get(id), createElement: tag => element(tag), documentElement: {} };
   const context = {
-    document, navigator: { language }, localStorage: { getItem: () => language, setItem() {} }, console: { error: error => errors.push(error) },
+    document, navigator: { language }, localStorage: { getItem: key => storage.get(key) ?? null, setItem: (key, value) => storage.set(key, String(value)) }, console: { error: error => errors.push(error) },
     Blob, Uint8Array, Uint8ClampedArray, TextDecoder, TextEncoder, Response, DecompressionStream, atob, btoa, URL: { createObjectURL(blob) { const url = `blob:${urls.size}`; urls.set(url, blob); return url; }, revokeObjectURL() {} },
     matchMedia: q => ({ matches: q.includes('max-width') ? stageWidth <= 600 : false, addEventListener() {} }),
     requestAnimationFrame: fn => frames.push(fn),
@@ -66,7 +66,7 @@ function fixture({ language = 'en', stageWidth = 600, stageHeight = 400 } = {}) 
   };
   context.window = context;
   let script = html.match(/<script>\s*([\s\S]*?)<\/script>/)[1]
-    .replace('__APP_CONFIG_JSON__', JSON.stringify({ slug: 'same-spot-diff', name: 'Same Spot Diff', nameJa: 'Same Spot Diff', version: '1.0.0' }))
+    .replace('__APP_CONFIG_JSON__', fs.readFileSync(path.join(__dirname, '../app.config.json'), 'utf8'))
     .replace('__BUILD_MANIFEST_JSON__', '{}').replace('__EMBEDDED_ASSET_BUNDLE_JSON__', '{}');
   // Test-only access to real closure state/functions; no production test hooks.
   const hook = `globalThis.api = { state, setSource, removeSource, swapSources, invalidateResult, runComparison, scheduleDiffRefresh, saveResult, renderResult, fitStage, setView, setPhase, resetStageView, applyLanguage, updateStatsUi, updateResultSummary, setZoom,
@@ -89,6 +89,6 @@ function fixture({ language = 'en', stageWidth = 600, stageHeight = 400 } = {}) 
   async function frame() { const batch = frames.splice(0); batch.forEach(fn => fn()); await flush(); }
   async function timer(delay) { const pair = [...timers].find(([, t]) => t.delay === delay && !t.interval); assert.ok(pair, `Expected timer ${delay}`); timers.delete(pair[0]); const promise = pair[1].fn(); await flush(); return { promise }; }
   async function rejectDecode(index) { decodes[index].reject(new Error('synthetic decode failure')); await flush(); imageLoads.at(-1).onerror(new Error('synthetic fallback failure')); await flush(); }
-  return { api, get, nodes, context, result, file, drawable, decodes, errors, timers, frames, blobs, downloads, frame, flush, timer, rejectDecode, html };
+  return { api, get, nodes, context, storage, result, file, drawable, decodes, errors, timers, frames, blobs, downloads, frame, flush, timer, rejectDecode, html };
 }
 module.exports = { fixture, html };
