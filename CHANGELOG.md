@@ -8,6 +8,14 @@
 - Reject obsolete decode successes/errors, comparisons, queued diff refreshes, and PNG callbacks. Cancelled/rejected selections keep the existing result; failed accepted decodes retain the old image for a fresh comparison.
 - Add dependency-free inline-runtime regression tests and release-variant checks.
 
+## [1.0.1] - 2026-10-07
+
+### Fixed
+
+- Standardize header target-language labels as EN / JA and localize the language tooltip and accessible name; retain localized Help controls.
+- Keep the Japanese privacy badge consistent as 完全ローカル処理 and document the language controls in Help.
+- Add header runtime regressions for both languages, repeated switching, stored preference restoration, and unchanged application data.
+
 ## 1.0.0 - Same Spot Diff - 2026-08-20
 
 - Implemented local Before / After image comparison with custom OpenCV WASM.

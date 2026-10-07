@@ -3,7 +3,7 @@
   "name": "Same Spot Diff",
   "nameJa": "Same Spot Diff",
   "slug": "same-spot-diff",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Align two photos automatically and highlight what changed, entirely in the browser.",
   "descriptionJa": "撮影位置のズレを自動補正し、2枚の写真で変化した場所だけをブラウザー内で見つけます。",
   "defaultLanguage": "auto",

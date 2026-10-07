@@ -34,7 +34,7 @@ GitHub Pages delivers the initial HTML. After it loads, image alignment, differe
 - Reuse the existing alignment when only difference settings change, avoiding unnecessary realignment
 - JPEG / PNG / WebP input
 - Save the currently displayed result as PNG
-- Japanese and English UI in the same HTML
+- Japanese / English UI with target-language EN / JA header controls and localized tooltips
 - Embedded SVG favicon
 - OpenCV JavaScript and WebAssembly embedded in the generated HTML
 - No analytics, upload API, runtime CDN, or runtime GitHub download
