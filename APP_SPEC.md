@@ -137,3 +137,7 @@ A monotonic source generation token prevents stale image-decode / processing res
 - Keep the prior decoded source until the replacement decodes successfully; if decoding fails, retain that source, show the error, and require comparison again. Track pending decodes independently for both slots.
 - A newer selection or removal invalidates a slot's previous decode success and failure. Obsolete comparison, difference-refresh, and PNG serialization callbacks cannot overwrite or export newer state.
 - Automated checks execute the inline runtime with synthetic DOM/canvas inputs and controlled async boundaries. They do not substitute for native browser, camera, or OpenCV alignment verification.
+
+## Brand icon consistency
+
+- Brand backgrounds use #16624f with corner radii equal to exactly 25% of each background axis. Preserve foreground artwork, placement, and existing canvas padding across SVG assets, app headers, and embedded favicons.
