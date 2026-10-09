@@ -437,3 +437,8 @@ Write-Host "[OK] Runtime network access is blocked by CSP."
 if ($selfExtractEnabled) {
   Write-Host "[OK] Self-extracting HTML: $selfExtractOutputPath" -ForegroundColor Green
 }
+
+# Keep the default download alias current without replacing it for custom-output builds.
+if (-not $OutputPathWasSpecified) {
+  Copy-Item -LiteralPath $OutputPath -Destination (Join-Path $Root 'same-spot-diff.html') -Force
+}

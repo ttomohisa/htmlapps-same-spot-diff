@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.4 - 2026-10-09
+
+- Replace the header icon and embedded favicon with the supplied canonical SVG artwork, preserving its #16624f background and exact 25% corner radius.
+- Synchronize the generated standalone HTML and download alias; add exact-artwork and release-copy parity checks.
+
 ## 1.0.3 - 2026-10-09
 
 - Normalize brand icon backgrounds to #16624f with exact 25% corner radii across SVG assets, header icons, and embedded favicons, preserving existing artwork.

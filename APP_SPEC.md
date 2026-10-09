@@ -141,3 +141,4 @@ A monotonic source generation token prevents stale image-decode / processing res
 ## Brand icon consistency
 
 - Brand backgrounds use #16624f with corner radii equal to exactly 25% of each background axis. Preserve foreground artwork, placement, and existing canvas padding across SVG assets, app headers, and embedded favicons.
+- The supplied 64 x 64 SVG is the canonical header and favicon artwork. Keep assets/favicon.svg byte-for-byte unchanged and embed the complete SVG in every generated release, preserving the existing header footprint.
