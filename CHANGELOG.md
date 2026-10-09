@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.2 - 2026-10-09
+
+- Prepare the maintenance build for an English catalog screenshot, preserving app behavior and the supplied icon.
+
 ## Unreleased
 
 - Add Previous change / Next change controls with a localized position count, all-region traversal, and padded viewport focus. Keep the active view, PNG pixels, statistics, and ignore settings unchanged.
