@@ -16,6 +16,8 @@ Same Spot Diff automatically aligns the two photos first, then highlights the pl
 
 GitHub Pages delivers the initial HTML. After it loads, image alignment, difference detection, zooming, ignored-area masking, Blink view, slider comparison, and PNG export are processed locally in your browser. The photos you select are not uploaded by the app.
 
+![Same Spot Diff English interface comparing synthetic Before and After images with two changed regions](assets/screenshot-en.png)
+
 ## Features
 
 - Automatically align small camera-position, rotation, and perspective differences before comparing photos
