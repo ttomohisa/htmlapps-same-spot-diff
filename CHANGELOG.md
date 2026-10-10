@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.5 - 2026-10-10
+
+- Keep the background page in place while Help is open, preserving its existing internal scrolling and close behavior.
+- Add Help-only modal scroll contracts across the source and generated HTML variants.
+
 ## 1.0.4 - 2026-10-09
 
 - Replace the header icon and embedded favicon with the supplied canonical SVG artwork, preserving its #16624f background and exact 25% corner radius.
