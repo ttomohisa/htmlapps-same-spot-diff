@@ -274,7 +274,3 @@ Licensed under the [MIT License](LICENSE).
 ### Runtime regression tests
 
 Run `node --test tests/*.test.cjs` with Node.js 22 or newer; no npm installation is required. The repository check also runs these tests against the source, readable release, decoded self-extract release, and checked-in `same-spot-diff.html`. After rebuilding, copy `dist/index.html` to `same-spot-diff.html` when updating the checked-in release. Tests use synthetic DOM/canvas and controlled image-decoding/OpenCV boundaries, not a browser. Optional `SAME_SPOT_REAL_CANVAS=1` checks use `@napi-rs/canvas` when already installed to compare actual synthetic PNG bytes.
-
-### Help scrolling
-
-While Help is open, scroll inside Help; closing it restores normal page scrolling.

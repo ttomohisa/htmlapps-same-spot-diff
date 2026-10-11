@@ -272,7 +272,3 @@ Copyright © 2026 ttomohisa
 ### 実行時の回帰テスト
 
 Node.js 22以降で `node --test tests/*.test.cjs` を実行できます。npmのインストールは不要です。リポジトリ検査ではソース、読みやすい生成HTML、自己展開版の復元HTML、同梱の `same-spot-diff.html` を検査します。同梱版を更新する際はビルド後に `dist/index.html` を `same-spot-diff.html` へコピーしてください。テストは合成DOM/canvasと制御した画像読み込み・OpenCV境界を使い、実ブラウザー検査ではありません。`@napi-rs/canvas` がインストール済みなら `SAME_SPOT_REAL_CANVAS=1` で合成PNGの実バイト一致も検査できます。
-
-### ヘルプのスクロール
-
-ヘルプを開いている間は背景ページを固定し、ヘルプ内をスクロールできます。閉じると通常のページスクロールに戻ります。

@@ -13,9 +13,9 @@ for (const element of ['html', 'body']) test(`${element} locks scrolling only wh
   const rule = rules.find(([, selectors, declarations]) => selectors.split(',').map(s => s.trim()).includes(`${element}:has(#helpDialog:modal)`) && /(?:^|;)\s*overflow\s*:\s*hidden\s*(?:;|$)/.test(declarations));
   assert.ok(rule, `${element} must prevent background wheel scrolling during modal Help`);
 });
-test('Help explains modal scrolling in both languages', () => {
+test('Help omits implementation commentary and retains user instructions', () => {
   const help = html.split('APP:HELP:BEGIN')[1].split('APP:HELP:END')[0];
-  assert.match(help, /data-i18n="helpScroll"/);
-  assert.match(html, /helpScroll:\s*'ヘルプを開いている間は背景ページをスクロールせず、ヘルプ内をスクロールできます。'/);
-  assert.match(html, /helpScroll:\s*'While Help is open, scroll within Help; the background page stays in place\.'/);
+  assert.doesNotMatch(help, /data-i18n="helpScroll"/);
+  assert.doesNotMatch(html, /helpScroll:\s*'ヘルプを開いている間は背景ページをスクロールせず、ヘルプ内をスクロールできます。'/);
+  assert.doesNotMatch(html, /helpScroll:\s*'While Help is open, scroll within Help; the background page stays in place\.'/);
 });
