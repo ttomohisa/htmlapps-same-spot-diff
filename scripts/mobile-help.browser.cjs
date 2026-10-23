@@ -8,6 +8,8 @@ const { chromium } = require('playwright');
 const { execFileSync } = require('node:child_process');
 const os = require('node:os');
 const baselineSha = 'e9b4111bc472eabafebde7dcd9cec0373221bece';
+// Only browser-assigned blob UUIDs differ; keep error text, frames, line and column exact.
+const normalizeLoaderErrors = errors => errors.map(message => message.replace(/blob:null\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(?=:\d+:\d+)/g, 'blob:null/<runtime-object-url>'));
 const buildSelector = '.build-info';
 
 
@@ -30,7 +32,8 @@ async function smoke(page,results,file,baselineFailure,errors){
  if(file==='dist/index.self-extract.html'){
    assert.equal(await page.locator('#saveButton').isDisabled(),true,'known loader CSP limitation must match immutable baseline');
    assert.equal(await page.locator('#errorBox').innerText(),baselineFailure.message,'loader error must exactly match immutable baseline');
-   assert.deepEqual(errors,baselineFailure.errors,'no additional loader errors beyond the observed baseline');
+   assert.deepEqual(normalizeLoaderErrors(errors),normalizeLoaderErrors(baselineFailure.errors),'no additional loader errors beyond the observed baseline');
+   fs.writeFileSync(path.join(results,'current-loader-csp.json'),JSON.stringify({base:baselineSha,message:await page.locator('#errorBox').innerText(),errors},null,2));
    errors.length=0;
    console.log('KNOWN BASELINE LIMITATION '+baselineSha+' self-extract comparison blocked by unchanged loader CSP; layout still strictly verified');
    return;
