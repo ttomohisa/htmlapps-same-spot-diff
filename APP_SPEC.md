@@ -146,3 +146,10 @@ A monotonic source generation token prevents stale image-decode / processing res
 ### Help scrolling
 
 Opening modal Help locks background page scrolling. Its existing scrollable body, close controls and focus restoration remain available; closing Help restores normal page scrolling.
+
+## Shared mobile footer and Help metadata
+
+- Hide only the informational page footer at the existing 600px mobile-workflow breakpoint; preserve functional actions and navigation.
+- Keep the existing metadata block, IDs and population intact as the final Help scroll-body item, available on desktop and mobile.
+- The Japanese local-processing badge uses the English equivalent `Fully local processing`; detailed image privacy statements remain unchanged.
+- Within Help only, retain the header height and let the body shrink into the remaining bounded dialog height, so final metadata stays reachable. Other dialogs keep their existing layout.
