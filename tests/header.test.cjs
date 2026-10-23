@@ -27,7 +27,7 @@ for (const language of ['ja', 'en']) {
   test(`${language}: local-processing badge uses the localized privacy copy`, () => {
     const f = fixture({ language });
     assert.equal(f.nodes.find(node => node.dataset.i18n === 'localBadge').textContent,
-      language === 'ja' ? '完全ローカル処理' : 'Images never leave this device');
+      language === 'ja' ? '完全ローカル処理' : 'Fully local processing');
   });
 }
 

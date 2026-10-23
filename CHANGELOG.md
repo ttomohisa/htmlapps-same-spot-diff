@@ -21,6 +21,10 @@
 
 ## Unreleased
 
+- Hide the informational mobile footer and move the existing build metadata to the end of Help, preserving functional actions and privacy wording.
+- Standardize the exact local-processing badge to “Fully local processing” in English.
+
+
 - Add Previous change / Next change controls with a localized position count, all-region traversal, and padded viewport focus. Keep the active view, PNG pixels, statistics, and ignore settings unchanged.
 - Reset region navigation on result changes and Reset view; disable boundary directions instead of wrapping.
 - Clear stale alignment/results and ignored areas immediately when a supported, size-valid replacement starts decoding; gate comparison and export while either slot is pending.
