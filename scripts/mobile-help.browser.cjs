@@ -54,6 +54,7 @@ async function observeBaselineLoader(browser,results){
    assert.equal(builder.toString().replace(/\r\n/g,'\n'),fs.readFileSync(path.join(__dirname,'build-self-extract.ps1'),'utf8').replace(/\r\n/g,'\n'),'official loader builder remains unchanged');
    const input=path.join(temporary,'baseline-readable.html'),output=path.join(temporary,'baseline-loader.html'),script=path.join(temporary,'build-self-extract.ps1');
    fs.writeFileSync(input,gitFile('same-spot-diff.html'));fs.writeFileSync(script,builder);
+   fs.writeFileSync(path.join(temporary,'verify-self-extract.ps1'),gitFile('scripts/verify-self-extract.ps1'));
    execFileSync('pwsh',['-NoProfile','-File',script,'-InputPath',input,'-OutputPath',output],{stdio:'pipe',maxBuffer:4*1024*1024});
    const csp=html=>html.match(/<meta http-equiv="Content-Security-Policy"[^>]*>/)[0];
    assert.equal(csp(fs.readFileSync(output,'utf8')),csp(fs.readFileSync(path.join(__dirname,'../dist/index.self-extract.html'),'utf8')),'immutable base and head loader policies match');
