@@ -41,6 +41,11 @@ jobs:
         ./scripts/check-repository.ps1
         node --test tests/mobile-build-info.test.cjs
         if ($LASTEXITCODE -ne 0) { throw "Mobile build information regression failed." }
+    - name: Fetch immutable loader baseline for known CSP limitation
+      shell: pwsh
+      run: |
+        git fetch --no-tags --depth=1 origin e9b4111bc472eabafebde7dcd9cec0373221bece
+        if ($LASTEXITCODE -ne 0) { throw "Immutable baseline fetch failed." }
     - name: Verify mobile Help in Chromium
       shell: pwsh
       run: |
