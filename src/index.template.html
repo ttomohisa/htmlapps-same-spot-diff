@@ -242,6 +242,9 @@
     .dialog-close:hover { background: var(--surface-hover); }
     .dialog-close svg { width: 19px; height: 19px; }
     .dialog-body { padding: 20px 20px 28px; overflow: auto; max-height: calc(100dvh - 102px); }
+    #helpDialog[open] { display: flex; flex-direction: column; }
+    #helpDialog .dialog-header { flex: none; }
+    #helpDialog .dialog-body { min-height: 0; flex: 1 1 auto; }
     .dialog-body h3 { margin: 24px 0 8px; padding-top: 18px; border-top: 1px solid var(--line); font-size: 13px; }
     .dialog-body h3:first-child { margin-top: 0; padding-top: 0; border-top: 0; }
     .dialog-body p, .dialog-body li { color: var(--muted); font-size: 12px; line-height: 1.7; }

@@ -19,3 +19,10 @@ test('the exact Japanese local-processing badge has the canonical English equiva
  assert.match(html,/localBadge: '完全ローカル処理'/);assert.match(html,/localBadge: 'Fully local processing'/);
  assert.match(html,/画像と比較結果はこの端末内だけで処理されます/);
 });
+
+test('Help allocates remaining height to its scroll body without shrinking the header',()=>{
+ const css=html.match(/<style>([\s\S]*?)<\/style>/)[1];
+ assert.match(css,/#helpDialog\[open\]\s*\{\s*display:\s*flex;\s*flex-direction:\s*column;?\s*\}/);
+ assert.match(css,/#helpDialog \.dialog-header\s*\{\s*flex:\s*none;?\s*\}/);
+ assert.match(css,/#helpDialog \.dialog-body\s*\{\s*min-height:\s*0;\s*flex:\s*1 1 auto;?\s*\}/);
+});
