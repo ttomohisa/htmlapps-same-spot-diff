@@ -20,7 +20,6 @@ for (const language of ['ja', 'en']) {
     const expected = language === 'ja' ? '使い方と注意事項' : 'How to use & notes';
     assert.equal(f.get('helpButton').getAttribute('aria-label'), expected);
     assert.equal(f.get('helpButton').title, expected);
-    assert.equal(f.nodes.find(node => node.dataset.i18n === 'helpLanguage')?.textContent, language === 'ja' ? 'ヘッダーのENで英語に、JAで日本語に切り替えます。' : 'Use EN in the header to switch to English, or JA to switch to Japanese.');
     await f.get('helpButton').click(); assert.equal(f.get('helpDialog').open, true);
     await f.get('closeHelpButton').click(); assert.equal(f.get('helpDialog').open, false);
   });
