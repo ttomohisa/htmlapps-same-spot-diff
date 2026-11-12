@@ -91,7 +91,7 @@ foreach ($token in @("compressionSetting", "Compress-GzipBytes", "Get-LocalPacka
 }
 if ($builderText.Contains("__EMBEDDED_ASSET_BUNDLE_BASE64__")) { throw "build-standalone.ps1 must not wrap the full asset bundle in Base64." }
 
-$selfExtractBuilderPath = Join-Path $Root "scripts\\build-self-extract.ps1"
+$selfExtractBuilderPath = Join-Path $Root "scripts\build-self-extract.ps1"
 $selfExtractBuilderText = Get-Content -Raw -Encoding UTF8 $selfExtractBuilderPath
 if (-not $selfExtractBuilderText.Contains("script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:;")) {
   throw "Self-extract wrapper must allow the embedded OpenCV runtime to compile WebAssembly (unsafe-eval)."
