@@ -85,13 +85,32 @@ async function main() {
             assert.equal(await page.locator('html').getAttribute('lang'),language,label+': repeated language toggles');
             for(const id of ['buildMeta']){assert.equal(await page.locator('#'+id).count(),1,label+': unique metadata after toggles');assert.ok(!['','—','-'].includes((await page.locator('#'+id).textContent()).trim()),label+': populated metadata after toggles');}
             assert.equal(await page.locator('[data-i18n="localBadge"]').textContent(), language === 'en' ? 'Fully local processing' : '完全ローカル処理', label);
-            assert.ok(await page.locator('.local-badge').evaluate(el => {
+            assert.equal(await page.locator('.local-badge').isVisible(), width > 600, label + ': badge is desktop-only');
+            if (width > 600) assert.ok(await page.locator('.local-badge').evaluate(el => {
               const box = el.getBoundingClientRect();
               const range = document.createRange();
               range.selectNodeContents(el.querySelector('[data-i18n="localBadge"]'));
               return box.left >= 0 && box.right <= innerWidth && el.scrollWidth <= el.clientWidth + 1
-                && [...range.getClientRects()].every(rect => rect.left >= box.left - 1 && rect.right <= box.right + 1 && rect.top >= box.top - 1 && rect.bottom <= box.bottom + 1);
-            }), label + ': badge text fits');
+                && [...range.getClientRects()].every(rect => rect.left >= box.left - 1 && rect.right <= box.right + 1);
+            }), label + ': desktop badge text fits');
+            const hero = page.locator('#heroTitle');
+            assert.equal(await hero.innerText(), language === 'ja' ? '2枚の写真を比較' : 'Compare two photos', label + ': task-first title');
+            const heroMetrics = async () => hero.evaluate(el => {
+              const styles = getComputedStyle(el);
+              return {
+                fontSize: styles.fontSize,
+                lineHeight: styles.lineHeight,
+                fits: el.scrollWidth <= el.clientWidth + 1 && el.getBoundingClientRect().height <= parseFloat(styles.lineHeight) * 1.1
+              };
+            });
+            const beforeLanguageChange = await heroMetrics();
+            assert.equal(beforeLanguageChange.fits, true, label + ': one-line hero title fits');
+            await page.locator('#languageButton').click();
+            const otherLanguage = await heroMetrics();
+            assert.equal(otherLanguage.fits, true, label + ': other-language hero title fits');
+            assert.equal(otherLanguage.fontSize, beforeLanguageChange.fontSize, label + ': Japanese/English hero font size');
+            assert.equal(otherLanguage.lineHeight, beforeLanguageChange.lineHeight, label + ': Japanese/English hero line height');
+            await page.locator('#languageButton').click();
             assert.equal(await page.locator('main #buildMeta').count(), 0, label);
             assert.equal(await page.locator('footer').isVisible(), width > 600, label);
             await prepareApp(page, width, label);
