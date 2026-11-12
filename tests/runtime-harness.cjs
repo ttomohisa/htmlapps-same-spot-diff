@@ -17,7 +17,7 @@ function fixture({ language = 'en', storage = new Map(), stageWidth = 600, stage
       tagName: tag.toUpperCase(), attrs, dataset: {}, style: {}, disabled: 'disabled' in attrs, hidden: false, textContent: '', value: attrs.value || '', checked: 'checked' in attrs, open: false,
       clientWidth: stageWidth, clientHeight: stageHeight,
       classList: { add: c => classes.add(c), remove: c => classes.delete(c), contains: c => classes.has(c), toggle(c, force) { if (force ?? !classes.has(c)) classes.add(c); else classes.delete(c); } },
-      setAttribute(k, v) { this.attrs[k] = String(v); }, getAttribute(k) { return this.attrs[k] ?? null; },
+      setAttribute(k, v) { this.attrs[k] = String(v); }, getAttribute(k) { return this.attrs[k] ?? null; }, removeAttribute(k) { delete this.attrs[k]; },
       addEventListener(k, fn) { if (!listeners.has(k)) listeners.set(k, []); listeners.get(k).push(fn); },
       removeEventListener(k, fn) { listeners.set(k, (listeners.get(k) || []).filter(listener => listener !== fn)); },
       async emit(k, data = {}) { for (const fn of listeners.get(k) || []) await fn({ type: k, target: this, preventDefault() {}, ...data }); },
