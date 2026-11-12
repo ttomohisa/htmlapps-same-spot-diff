@@ -891,6 +891,8 @@
         outputTouched: false
       };
       const stageInteraction = { pointers: new Map(), mode: '', anchor: null, lastX: 0, lastY: 0, pinchStartDistance: 0, pinchStartZoom: 1 };
+      let cameraGuideGeneration = 0;
+      let cancelCameraMetadata = null;
 
       function readStorage(key) { try { return localStorage.getItem(key); } catch { return null; } }
       function writeStorage(key, value) { try { localStorage.setItem(key, value); } catch { /* unavailable */ } }
@@ -905,11 +907,18 @@
 function updateCameraGuideUi() {
   const button = $('#openCameraGuideButton');
   if (!button) return;
-  button.disabled = !state.sources.reference || ['loading-runtime','processing','processing-diff'].includes(state.phase);
+  button.disabled = !state.sources.reference || hasPendingDecode() || ['loading-runtime','processing','processing-diff'].includes(state.phase);
   const help = $('#cameraGuideButtonHelp');
   if (help) help.textContent = state.sources.reference ? t('cameraGuideButtonHelp') : t('cameraGuideNeedBefore');
 }
 function releaseCameraGuide() {
+  // Invalidate camera requests that are still waiting for permission, metadata, or playback.
+  cameraGuideGeneration += 1;
+  if (cancelCameraMetadata) {
+    const cancel = cancelCameraMetadata;
+    cancelCameraMetadata = null;
+    cancel();
+  }
   if (state.cameraStream) {
     for (const track of state.cameraStream.getTracks()) { try { track.stop(); } catch { /* ignore */ } }
     state.cameraStream = null;
@@ -931,10 +940,11 @@ function cameraErrorMessage(error) {
   return t('cameraGuideOpenError');
 }
 async function openCameraGuide() {
-  if (!state.sources.reference) { toast(t('cameraGuideNeedBefore'), { tone: 'warning' }); return; }
+  if (!state.sources.reference || hasPendingDecode()) { toast(t('cameraGuideNeedBefore'), { tone: 'warning' }); return; }
   if (!navigator.mediaDevices?.getUserMedia) { toast(t('cameraGuideUnavailable'), { tone: 'warning' }); return; }
   const dialog = $('#cameraGuideDialog');
   releaseCameraGuide();
+  const session = cameraGuideGeneration;
   state.cameraOverlayVisible = true;
   $('#cameraGuideOverlayToggle').setAttribute('aria-pressed', 'true');
   $('#cameraGuideOverlayToggle').textContent = t('cameraGuideHideBefore');
@@ -946,16 +956,37 @@ async function openCameraGuide() {
   if (!dialog.open) dialog.showModal();
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } } });
-    if (!dialog.open) { for (const track of stream.getTracks()) track.stop(); return; }
+    if (session !== cameraGuideGeneration || !dialog.open) {
+      for (const track of stream.getTracks()) { try { track.stop(); } catch { /* ignore */ } }
+      return;
+    }
     state.cameraStream = stream;
     const video = $('#cameraGuideVideo'); video.srcObject = stream;
-    if (video.readyState < 1) await new Promise((resolve, reject) => { const done = () => { cleanup(); resolve(); }; const fail = () => { cleanup(); reject(new Error('video metadata failed')); }; const cleanup = () => { video.removeEventListener('loadedmetadata', done); video.removeEventListener('error', fail); }; video.addEventListener('loadedmetadata', done, { once: true }); video.addEventListener('error', fail, { once: true }); });
+    if (video.readyState < 1) {
+      const ready = await new Promise((resolve, reject) => {
+        const cleanup = () => {
+          video.removeEventListener('loadedmetadata', done);
+          video.removeEventListener('error', fail);
+          if (cancelCameraMetadata === cancel) cancelCameraMetadata = null;
+        };
+        const done = () => { cleanup(); resolve(true); };
+        const fail = () => { cleanup(); reject(new Error('video metadata failed')); };
+        const cancel = () => { cleanup(); resolve(false); };
+        cancelCameraMetadata = cancel;
+        video.addEventListener('loadedmetadata', done, { once: true });
+        video.addEventListener('error', fail, { once: true });
+        if (video.readyState >= 1) done();
+      });
+      if (!ready || session !== cameraGuideGeneration || !dialog.open) return;
+    }
     try { await video.play(); } catch { /* autoplay may already have started */ }
+    if (session !== cameraGuideGeneration || !dialog.open) return;
     if (video.videoWidth && video.videoHeight) $('#cameraGuideStage').style.aspectRatio = `${video.videoWidth} / ${video.videoHeight}`;
     $('#captureCameraGuideButton').disabled = false;
     setCameraGuideStatus(t('cameraGuideReady'));
-    setTimeout(() => { if ($('#cameraGuideDialog').open) setCameraGuideStatus(''); }, 1800);
+    setTimeout(() => { if (session === cameraGuideGeneration && dialog.open) setCameraGuideStatus(''); }, 1800);
   } catch (error) {
+    if (session !== cameraGuideGeneration) return;
     console.error(error); releaseCameraGuide(); setCameraGuideStatus(cameraErrorMessage(error), 'error');
   }
 }
@@ -970,15 +1001,23 @@ function cameraFilename() {
 async function captureCameraGuide() {
   const video = $('#cameraGuideVideo');
   if (!state.cameraStream || !video.videoWidth || !video.videoHeight) return;
+  const session = cameraGuideGeneration;
+  const dialog = $('#cameraGuideDialog');
+  const reference = state.sources.reference;
+  const isCurrent = () => session === cameraGuideGeneration && dialog.open && reference === state.sources.reference;
   const button = $('#captureCameraGuideButton'); button.disabled = true; setCameraGuideStatus(t('cameraGuideCapturing'));
   try {
     const canvas = document.createElement('canvas'); canvas.width = video.videoWidth; canvas.height = video.videoHeight;
     const ctx = canvas.getContext('2d', { alpha: false }); ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
     const blob = await new Promise((resolve, reject) => canvas.toBlob(value => value ? resolve(value) : reject(new Error('capture failed')), 'image/jpeg', .92));
+    if (!isCurrent()) return;
     const file = new File([blob], cameraFilename(), { type: 'image/jpeg', lastModified: Date.now() });
-    await setSource('compare', file);
+    const accepted = await setSource('compare', file, isCurrent);
+    if (!isCurrent()) return;
+    if (!accepted) { button.disabled = false; setCameraGuideStatus(t('cameraGuideCaptureError'), 'error'); return; }
     closeCameraGuide(); toast(t('cameraGuideCaptured'), { tone: 'success' });
   } catch (error) {
+    if (!isCurrent()) return;
     console.error(error); button.disabled = false; setCameraGuideStatus(t('cameraGuideCaptureError'), 'error');
   }
 }
@@ -1242,25 +1281,27 @@ function setView(view) {
         const ctx = canvas.getContext('2d'); ctx.clearRect(0, 0, canvas.width, canvas.height); ctx.drawImage(source.drawable, 0, 0, canvas.width, canvas.height);
         card.classList.add('has-image'); fileEl.textContent = source.file.name; detailEl.textContent = `${source.width} × ${source.height} · ${formatBytes(source.file.size)}`;
       }
-      async function setSource(side, file) {
-        if (!file) return;
-        if (!isSupportedImage(file)) { toast(t('unsupportedImage'), { tone: 'warning' }); return; }
-        if (file.size > 40 * 1024 * 1024) { toast(t('fileTooLarge'), { tone: 'warning' }); return; }
+      async function setSource(side, file, isCurrent = () => true) {
+        if (!file || !isCurrent()) return false;
+        if (!isSupportedImage(file)) { toast(t('unsupportedImage'), { tone: 'warning' }); return false; }
+        if (file.size > 40 * 1024 * 1024) { toast(t('fileTooLarge'), { tone: 'warning' }); return false; }
         const decodeToken = ++state.decodeGeneration[side];
         state.pendingDecode[side] = true;
         clearIgnoreState();
         invalidateResult(Boolean(state.sources[side] || state.result));
         try {
           const decoded = await decodeImage(file);
-          if (decodeToken !== state.decodeGeneration[side]) { closeDrawable(decoded); return; }
+          if (decodeToken !== state.decodeGeneration[side] || !isCurrent()) { closeDrawable(decoded); return false; }
           const old = state.sources[side];
           state.sources[side] = { file, ...decoded };
           closeDrawable(old);
           drawPreview(side);
           if (side === 'compare' && !state.outputTouched) $('#outputFilename').value = defaultOutputName(file.name);
+          return true;
         } catch (error) {
-          if (decodeToken !== state.decodeGeneration[side]) return;
+          if (decodeToken !== state.decodeGeneration[side] || !isCurrent()) return false;
           console.error(error); toast(t('decodeFailed'), { tone: 'warning' });
+          return false;
         } finally {
           // An older decode cannot release a newer selection's pending gate.
           if (decodeToken === state.decodeGeneration[side]) {
@@ -1459,6 +1500,8 @@ function setView(view) {
             cv.rectangle(valid, p1, p2, new cv.Scalar(0, 0, 0, 0), -1);
           }
           kernel = cv.getStructuringElement(cv.MORPH_ELLIPSE, new cv.Size(3, 3)); cv.morphologyEx(rawMask, rawMask, cv.MORPH_OPEN, kernel); cv.morphologyEx(rawMask, rawMask, cv.MORPH_CLOSE, kernel);
+          // Morphology can regrow pixels across ignored or invalid borders; reapply the validity mask.
+          cv.bitwise_and(rawMask, valid, rawMask);
           cv.findContours(rawMask, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
           filtered.create(rawMask.rows, rawMask.cols, cv.CV_8UC1); filtered.setTo(new cv.Scalar(0, 0, 0, 0));
           const minArea = getMinAreaThreshold(); const regions = [];
@@ -1644,6 +1687,8 @@ resultStage.addEventListener('pointerdown', event => {
     stageInteraction.mode = 'ignore'; renderResult(); return;
   }
   if (stageInteraction.pointers.size === 2) {
+    // Two-finger navigation cancels a pending ignored rectangle instead of committing it.
+    if (state.ignoreDraft) { state.ignoreDraft = null; renderResult(); }
     const pts = Array.from(stageInteraction.pointers.values());
     stageInteraction.mode = 'pinch';
     stageInteraction.pinchStartDistance = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
@@ -1681,13 +1726,18 @@ function finishStagePointer(event) {
   if (stageInteraction.pointers.has(event.pointerId)) stageInteraction.pointers.delete(event.pointerId);
   if (stageInteraction.mode === 'ignore' && state.ignoreDraft) {
     const draft = state.ignoreDraft; const x = Math.min(draft.x0, draft.x1); const y = Math.min(draft.y0, draft.y1); const w = Math.abs(draft.x1 - draft.x0); const h = Math.abs(draft.y1 - draft.y0);
-    if (w >= 8 && h >= 8) {
+    if (event.type === 'pointerup' && w >= 8 && h >= 8) {
       state.ignoredRegions.push({ x: x / Math.max($('#resultCanvas').width,1), y: y / Math.max($('#resultCanvas').height,1), width: w / Math.max($('#resultCanvas').width,1), height: h / Math.max($('#resultCanvas').height,1) });
       toast(t('ignoreAdded')); updateIgnoreUi(); if (state.alignment) scheduleDiffRefresh();
     }
     state.ignoreDraft = null; renderResult();
   }
-  if (stageInteraction.pointers.size < 2) stageInteraction.mode = stageInteraction.pointers.size ? 'pan' : '';
+  if (stageInteraction.pointers.size < 2) {
+    const remaining = stageInteraction.pointers.values().next().value;
+    stageInteraction.mode = remaining ? 'pan' : '';
+    stageInteraction.anchor = null;
+    if (remaining) { stageInteraction.lastX = remaining.x; stageInteraction.lastY = remaining.y; }
+  }
 }
 ['pointerup','pointercancel','pointerleave'].forEach(name => resultStage.addEventListener(name, finishStagePointer));
 window.addEventListener('resize', () => { if (state.result) fitStage(false); });
