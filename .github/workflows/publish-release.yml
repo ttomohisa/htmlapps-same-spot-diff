@@ -1,0 +1,168 @@
+name: Publish verified GitHub Release
+
+on:
+  workflow_run:
+    workflows:
+      - Deploy standalone app to GitHub Pages
+    types:
+      - completed
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+# Never publish overlapping releases or move an existing version tag.
+concurrency:
+  group: same-spot-diff-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    if: >-
+      ${{ github.event.workflow_run.conclusion == 'success'
+      && github.event.workflow_run.event == 'push'
+      && github.event.workflow_run.head_branch == 'main'
+      && github.event.workflow_run.head_repository.full_name == github.repository }}
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout the exact deployed main commit
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          persist-credentials: false
+          lfs: false
+
+      - name: Check version, tag immutability and release state
+        id: version
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TARGET_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $version = [string]((Get-Content -Raw -Encoding UTF8 app.config.json | ConvertFrom-Json).version)
+          if ($version -notmatch '^\d+\.\d+\.\d+$') { throw "A release needs a stable SemVer version: $version" }
+          $tag = "v$version"
+          "version=$version" >> $env:GITHUB_OUTPUT
+          "tag=$tag" >> $env:GITHUB_OUTPUT
+
+          $remoteTag = @(git ls-remote --refs origin "refs/tags/$tag")
+          if ($LASTEXITCODE -ne 0) { throw "Could not check existing tag $tag" }
+          $tagExists = $remoteTag.Count -gt 0
+          if ($tagExists) {
+            $existingSha = ($remoteTag[0] -split '\s+')[0]
+            if ($existingSha -ne $env:TARGET_SHA) {
+              throw "Tag $tag already points to $existingSha; refusing to move it to $env:TARGET_SHA. Bump app.config.json."
+            }
+          }
+          "tag_exists=$($tagExists.ToString().ToLowerInvariant())" >> $env:GITHUB_OUTPUT
+
+          & gh release view $tag --repo $env:GITHUB_REPOSITORY --json tagName *> $null
+          if ($LASTEXITCODE -eq 0) {
+            Write-Host "Release $tag already exists; leaving its assets unchanged."
+            "publish=false" >> $env:GITHUB_OUTPUT
+          } else {
+            "publish=true" >> $env:GITHUB_OUTPUT
+          }
+
+      - name: Rebuild and verify both local-only HTML variants
+        if: steps.version.outputs.publish == 'true'
+        shell: pwsh
+        run: |
+          ./scripts/check-repository.ps1
+          if ($LASTEXITCODE -ne 0) { throw 'Repository verification failed.' }
+
+      - name: Prepare versioned downloads, ZIP and SHA-256 checksums
+        if: steps.version.outputs.publish == 'true'
+        id: package
+        shell: pwsh
+        env:
+          RELEASE_VERSION: ${{ steps.version.outputs.version }}
+          RELEASE_TAG: ${{ steps.version.outputs.tag }}
+          TARGET_SHA: ${{ github.event.workflow_run.head_sha }}
+          DEPLOY_RUN: ${{ github.event.workflow_run.id }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $base = "htmlapps-same-spot-diff-$env:RELEASE_TAG"
+          $assets = Join-Path $env:RUNNER_TEMP 'same-spot-release-assets'
+          $bundle = Join-Path $env:RUNNER_TEMP 'same-spot-release-bundle'
+          New-Item -ItemType Directory -Force -Path $assets, $bundle | Out-Null
+
+          $manifest = Get-Content -Raw -Encoding UTF8 'dist/dependency-manifest.json' | ConvertFrom-Json
+          if ($manifest.app.version -ne $env:RELEASE_VERSION) { throw 'Built manifest version does not match release version.' }
+          $html = Get-Content -Raw -Encoding UTF8 'dist/index.html'
+          $expectedVersion = '"version"\s*:\s*"' + [regex]::Escape($env:RELEASE_VERSION) + '"'
+          if ($html -notmatch $expectedVersion) { throw 'Built HTML does not contain the correct app version.' }
+
+          $readable = "$base.html"
+          $selfExtract = "$base.self-extract.html"
+          $zip = "$base.zip"
+          Copy-Item 'dist/index.html' (Join-Path $assets $readable)
+          Copy-Item 'dist/index.self-extract.html' (Join-Path $assets $selfExtract)
+          foreach ($file in @($readable, $selfExtract)) {
+            Copy-Item (Join-Path $assets $file) (Join-Path $bundle $file)
+          }
+          foreach ($file in @('dist/dependency-manifest.json', 'dist/self-extract-manifest.json', 'app.config.json', 'README.md', 'README.ja.md', 'CHANGELOG.md', 'VERIFY_OFFLINE.md', 'LICENSE', 'THIRD_PARTY_NOTICES.md')) {
+            Copy-Item $file (Join-Path $bundle ([IO.Path]::GetFileName($file)))
+          }
+          Compress-Archive -Path (Join-Path $bundle '*') -DestinationPath (Join-Path $assets $zip) -CompressionLevel Optimal -Force
+          $checksums = foreach ($file in @($readable, $selfExtract, $zip)) {
+            $digest = (Get-FileHash -Algorithm SHA256 -LiteralPath (Join-Path $assets $file)).Hash.ToLowerInvariant()
+            "$digest  $file"
+          }
+          [IO.File]::WriteAllLines((Join-Path $assets 'SHA256SUMS.txt'), $checksums, (New-Object Text.UTF8Encoding($false)))
+
+          $changelog = Get-Content -Raw -Encoding UTF8 CHANGELOG.md
+          $pattern = '(?ms)^## ' + [regex]::Escape($env:RELEASE_VERSION) + '(?: - [^\r\n]*)?\r?\n(.*?)(?=^## |\z)'
+          $entry = [regex]::Match($changelog, $pattern)
+          if (-not $entry.Success) { throw "CHANGELOG.md is missing the $env:RELEASE_VERSION entry." }
+          $notes = @"
+          ## Changes / 変更内容
+
+          $($entry.Groups[1].Value.Trim())
+
+          ## Downloads
+
+          - `$readable`: full standalone HTML.
+          - `$selfExtract`: compressed self-extracting standalone HTML.
+          - `$zip`: HTML, manifests, documentation and licenses.
+          - `SHA256SUMS.txt`: SHA-256 for the three downloads.
+
+          ## Verification
+
+          Published from commit `$env:TARGET_SHA` after [the main deployment workflow](https://github.com/$env:GITHUB_REPOSITORY/actions/runs/$env:DEPLOY_RUN) completed successfully. Both HTML variants were rebuilt and verified; runtime file inputs remain local.
+          "@
+          [IO.File]::WriteAllText((Join-Path $assets 'RELEASE_NOTES.md'), $notes, (New-Object Text.UTF8Encoding($false)))
+          "assets=$assets" >> $env:GITHUB_OUTPUT
+
+      - name: Create immutable version tag and GitHub Release
+        if: steps.version.outputs.publish == 'true'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ steps.version.outputs.tag }}
+          TAG_EXISTS: ${{ steps.version.outputs.tag_exists }}
+          TARGET_SHA: ${{ github.event.workflow_run.head_sha }}
+          ASSETS: ${{ steps.package.outputs.assets }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $base = "htmlapps-same-spot-diff-$env:RELEASE_TAG"
+          $args = @(
+            'release', 'create', $env:RELEASE_TAG,
+            (Join-Path $env:ASSETS "$base.html"),
+            (Join-Path $env:ASSETS "$base.self-extract.html"),
+            (Join-Path $env:ASSETS "$base.zip"),
+            (Join-Path $env:ASSETS 'SHA256SUMS.txt'),
+            '--repo', $env:GITHUB_REPOSITORY,
+            '--title', "Same Spot Diff $env:RELEASE_TAG",
+            '--notes-file', (Join-Path $env:ASSETS 'RELEASE_NOTES.md')
+          )
+          if ($env:TAG_EXISTS -eq 'true') {
+            $args += '--verify-tag'
+          } else {
+            $args += @('--target', $env:TARGET_SHA)
+          }
+          & gh @args
+          if ($LASTEXITCODE -ne 0) { throw 'GitHub Release creation failed.' }
