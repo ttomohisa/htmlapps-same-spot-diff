@@ -111,14 +111,18 @@ async function main() {
                   fits: el.scrollWidth <= el.clientWidth + 1
                 };
               }
-              return { hero: measure('heroTitle'), section: measure('sourceTitle') };
+              return { language: document.documentElement.lang, hero: measure('heroTitle'), section: measure('sourceTitle') };
             });
+            await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
             const firstTitles = await titleMetrics();
             assert.equal(firstTitles.hero.fits, true, label + ': hero text fits');
             assert.equal(firstTitles.section.fits, true, label + ': section text fits');
             await page.locator('#languageButton').click();
+            await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
             const translatedTitles = await titleMetrics();
             await page.locator('#languageButton').click();
+            assert.equal(firstTitles.language, language, label + ': initial title language');
+            assert.equal(translatedTitles.language, language === 'ja' ? 'en' : 'ja', label + ': translated title language');
             assert.equal(translatedTitles.hero.fits, true, label + ': translated hero text fits');
             assert.equal(translatedTitles.section.fits, true, label + ': translated section text fits');
             for (const name of ['hero', 'section']) {
