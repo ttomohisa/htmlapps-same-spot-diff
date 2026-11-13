@@ -125,9 +125,9 @@ jobs:
 
           ## Downloads
 
-          - $readable: full standalone HTML.
-          - $selfExtract: compressed self-extracting standalone HTML.
-          - $zip: HTML, manifests, documentation and licenses.
+          - ${readable}: full standalone HTML.
+          - ${selfExtract}: compressed self-extracting standalone HTML.
+          - ${zip}: HTML, manifests, documentation and licenses.
           - SHA256SUMS.txt: SHA-256 for the three downloads.
 
           ## Verification
