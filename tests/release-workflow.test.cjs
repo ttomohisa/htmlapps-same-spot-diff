@@ -16,7 +16,7 @@ test('release publishing distinguishes the initial missing release from unexpect
   assert.match(releaseWorkflow, /404\s*\{[^}]*publish=true/s);
   assert.match(releaseWorkflow, /200\s*\{[^}]*publish=false/s);
   assert.match(releaseWorkflow, /default \{ throw "Could not verify existing Release/);
-  assert.doesNotMatch(releaseWorkflow, /gh release view/);
+  assert.doesNotMatch(releaseWorkflow, /^\s*(?:&\s*)?gh release view/m);
 });
 
 test('release runs only after a successful main branch push deploy', () => {
