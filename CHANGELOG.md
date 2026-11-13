@@ -6,7 +6,7 @@
 - Prevent stale camera streams and false-success capture messages; guard source decoding.
 - Fix pinch-to-pan transitions and ignored-region masking at boundaries.
 - Simplify the Japanese/English hero and hide the local-processing badge on phones.
-- Balance visible Japanese/English heading sizes based on glyph metrics.
+- Keep the top Same Spot Diff app title identical in Japanese and English by using a consistent header font; restore normal heading sizes elsewhere.
 - Add browser regression tests and automatic GitHub tag/Release publishing after successful main deployment.
 
 
