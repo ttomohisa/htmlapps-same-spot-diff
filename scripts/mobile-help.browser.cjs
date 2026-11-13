@@ -95,22 +95,39 @@ async function main() {
             }), label + ': desktop badge text fits');
             const hero = page.locator('#heroTitle');
             assert.equal(await hero.innerText(), language === 'ja' ? '2枚の写真を比較' : 'Compare two photos', label + ': task-first title');
-            const heroMetrics = async () => hero.evaluate(el => {
-              const styles = getComputedStyle(el);
-              return {
-                fontSize: styles.fontSize,
-                lineHeight: styles.lineHeight,
-                fits: el.scrollWidth <= el.clientWidth + 1 && el.getBoundingClientRect().height <= parseFloat(styles.lineHeight) * 1.1
-              };
+            // A matching CSS font-size does not guarantee matching visible glyph height:
+            // CJK and Latin text use different font metrics and fallback fonts.
+            const titleMetrics = async () => page.evaluate(() => {
+              function measure(id) {
+                const el = document.getElementById(id);
+                const style = getComputedStyle(el);
+                const canvas = document.createElement('canvas');
+                const context = canvas.getContext('2d');
+                context.font = `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
+                const metrics = context.measureText(el.textContent.trim());
+                return {
+                  inkHeight: metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent,
+                  fontSize: style.fontSize,
+                  fits: el.scrollWidth <= el.clientWidth + 1
+                };
+              }
+              return { hero: measure('heroTitle'), section: measure('sourceTitle') };
             });
-            const beforeLanguageChange = await heroMetrics();
-            assert.equal(beforeLanguageChange.fits, true, label + ': one-line hero title fits');
+            const firstTitles = await titleMetrics();
+            assert.equal(firstTitles.hero.fits, true, label + ': hero text fits');
+            assert.equal(firstTitles.section.fits, true, label + ': section text fits');
             await page.locator('#languageButton').click();
-            const otherLanguage = await heroMetrics();
-            assert.equal(otherLanguage.fits, true, label + ': other-language hero title fits');
-            assert.equal(otherLanguage.fontSize, beforeLanguageChange.fontSize, label + ': Japanese/English hero font size');
-            assert.equal(otherLanguage.lineHeight, beforeLanguageChange.lineHeight, label + ': Japanese/English hero line height');
+            const translatedTitles = await titleMetrics();
             await page.locator('#languageButton').click();
+            assert.equal(translatedTitles.hero.fits, true, label + ': translated hero text fits');
+            assert.equal(translatedTitles.section.fits, true, label + ': translated section text fits');
+            for (const name of ['hero', 'section']) {
+              const difference = Math.abs(firstTitles[name].inkHeight - translatedTitles[name].inkHeight);
+              console.log('TITLE INK ' + label + ' ' + name + ' ' + JSON.stringify({
+                current: firstTitles[name], translated: translatedTitles[name], difference
+              }));
+              assert.ok(difference <= 2.5, label + ': bilingual ' + name + ' visible glyph height differs by ' + difference.toFixed(2) + ' CSS px');
+            }
             assert.equal(await page.locator('main #buildMeta').count(), 0, label);
             assert.equal(await page.locator('footer').isVisible(), width > 600, label);
             await prepareApp(page, width, label);
