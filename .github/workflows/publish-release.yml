@@ -112,7 +112,7 @@ jobs:
             $digest = (Get-FileHash -Algorithm SHA256 -LiteralPath (Join-Path $assets $file)).Hash.ToLowerInvariant()
             "$digest  $file"
           }
-          [IO.File]::WriteAllLines((Join-Path $assets 'SHA256SUMS.txt'), $checksums, (New-Object Text.UTF8Encoding($false)))
+          [IO.File]::WriteAllLines((Join-Path $assets 'SHA256SUMS.txt'), $checksums, (New-Object System.Text.UTF8Encoding($false)))
 
           $changelog = Get-Content -Raw -Encoding UTF8 CHANGELOG.md
           $pattern = '(?ms)^## ' + [regex]::Escape($env:RELEASE_VERSION) + '(?: - [^\r\n]*)?\r?\n(.*?)(?=^## |\z)'
@@ -125,16 +125,16 @@ jobs:
 
           ## Downloads
 
-          - `$readable`: full standalone HTML.
-          - `$selfExtract`: compressed self-extracting standalone HTML.
-          - `$zip`: HTML, manifests, documentation and licenses.
-          - `SHA256SUMS.txt`: SHA-256 for the three downloads.
+          - $readable: full standalone HTML.
+          - $selfExtract: compressed self-extracting standalone HTML.
+          - $zip: HTML, manifests, documentation and licenses.
+          - SHA256SUMS.txt: SHA-256 for the three downloads.
 
           ## Verification
 
-          Published from commit `$env:TARGET_SHA` after [the main deployment workflow](https://github.com/$env:GITHUB_REPOSITORY/actions/runs/$env:DEPLOY_RUN) completed successfully. Both HTML variants were rebuilt and verified; runtime file inputs remain local.
+          Published from commit $env:TARGET_SHA after [the main deployment workflow](https://github.com/$env:GITHUB_REPOSITORY/actions/runs/$env:DEPLOY_RUN) completed successfully. Both HTML variants were rebuilt and verified; runtime file inputs remain local.
           "@
-          [IO.File]::WriteAllText((Join-Path $assets 'RELEASE_NOTES.md'), $notes, (New-Object Text.UTF8Encoding($false)))
+          [IO.File]::WriteAllText((Join-Path $assets 'RELEASE_NOTES.md'), $notes, (New-Object System.Text.UTF8Encoding($false)))
           "assets=$assets" >> $env:GITHUB_OUTPUT
 
       - name: Create immutable version tag and GitHub Release
