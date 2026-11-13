@@ -25,6 +25,8 @@ $required = @(
   "scripts\build-self-extract.ps1",
   "scripts\verify-standalone.ps1",
   "scripts\verify-self-extract.ps1",
+  "scripts\check-release-syntax.ps1",
+  ".github\workflows\publish-release.yml",
   "scripts\import-opencv.ps1",
   "import-opencv.bat",
   "vendor\opencv\README.md",
@@ -40,6 +42,8 @@ foreach ($relative in $required) {
   $path = Join-Path $Root $relative
   if (-not (Test-Path $path)) { throw "Required repository file is missing: $relative" }
 }
+
+& (Join-Path $Root 'scripts\check-release-syntax.ps1')
 
 $mobileBottomBarPath = Join-Path $Root "components\mobile-bottom-bar.html"
 $mobileBottomBarText = Get-Content -Raw -Encoding UTF8 $mobileBottomBarPath
