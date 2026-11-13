@@ -85,7 +85,9 @@
     }
     .brand-mark svg { width: 100%; height: 100%; display: block; }
     .brand-copy { min-width: 0; }
-    .brand-name { display: flex; align-items: center; margin: 0; font-size: 17px; line-height: 1.2; letter-spacing: .01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    /* The app name is identical in both languages; use one explicit Latin font to
+       prevent lang-dependent Android font fallback from changing its appearance. */
+    .brand-name { display: flex; align-items: center; margin: 0; font-family: Arial, Helvetica, sans-serif; font-size: 17px; font-weight: 400; line-height: 1.2; letter-spacing: .01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     #brandName { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .version-badge { flex-shrink: 0; display: inline-flex; margin-left: 7px; padding: 1px 6px; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); background: var(--surface-muted); font-size: 10px; font-weight: 650; vertical-align: 2px; }
     .brand-meta { margin: 2px 0 0; color: var(--muted); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -266,6 +268,7 @@
     }
     @media (max-width: 600px) {
       footer { display: none; }
+      .local-badge { display: none; }
       :root { --header-height: 58px; }
       body { padding-bottom: calc(var(--mobile-bar-height) + env(safe-area-inset-bottom)); }
       .header-inner { padding-block: 8px; }
@@ -502,7 +505,7 @@
 </svg>
         </div>
         <div class="brand-copy">
-          <p class="brand-name"><span id="brandName">Same Spot Diff</span><span class="version-badge" id="versionBadge">v1.0.6</span></p>
+          <p class="brand-name"><span id="brandName">Same Spot Diff</span><span class="version-badge" id="versionBadge">v1.0.7</span></p>
           <p class="brand-meta" data-i18n="brandMeta">写真のズレを合わせて変化を比較・端末内処理</p>
         </div>
       </div>
@@ -518,8 +521,8 @@
   <main class="main">
     <section class="page-intro" aria-labelledby="heroTitle">
       <div>
-        <h1 id="heroTitle" data-i18n="introTitle">撮影位置のズレを直してから、変化を見つける</h1>
-        <p data-i18n="lead">Before / Afterの写真が少しずれていても、自動でズレを合わせて変わった場所だけを強調します。</p>
+        <h1 id="heroTitle" data-i18n="introTitle">2枚の写真を比較</h1>
+        <p data-i18n="lead">同じ場所で撮った2枚を自動で位置合わせし、違う部分を赤く表示します。</p>
       </div>
       <div class="local-badge">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 5 6v5c0 4.6 2.8 8 7 10 4.2-2 7-5.4 7-10V6z"/><path d="m9 12 2 2 4-5"/></svg>
@@ -838,7 +841,7 @@
 
       const translations = {
         ja: {
-          brandMeta: '写真のズレを合わせて変化を比較・端末内処理', helpTitle: '使い方と注意事項', close: '閉じる', introTitle: '撮影位置のズレを直してから、変化を見つける', lead: 'Before / Afterの写真が少しずれていても、自動でズレを合わせて変わった場所だけを強調します。', localBadge: '完全ローカル処理',
+          brandMeta: '写真のズレを合わせて変化を比較・端末内処理', helpTitle: '使い方と注意事項', close: '閉じる', introTitle: '2枚の写真を比較', lead: '同じ場所で撮った2枚を自動で位置合わせし、違う部分を赤く表示します。', localBadge: '完全ローカル処理',
           sourceTitle: '1. Before / Afterを選ぶ', sourceHelp: '同じ場所を撮った2枚を選びます。少しくらい撮影位置がずれていても、自動で合わせます。', referenceTitle: 'Before（基準）', referenceSubtitle: '変化前', compareTitle: 'After（比較）', compareSubtitle: '変化後', addReference: 'Beforeを追加', addCompare: 'Afterを追加', dropHint: 'タップして選択 / PCではドロップもできます', replace: '変更', remove: '外す', swap: 'Before / Afterを入れ替え', runCompare: '2枚を比較する',
           adjustBadge: '必要なときだけ', settingsTitle: '結果を調整', settingsHelp: '赤い表示が多すぎる・少なすぎるときに調整します。', settingsInlineHelp: '赤い表示が多すぎる・少なすぎるとき', processingSizeLight: '軽め（1200 px）', processingSizeStandard: '標準（1800 px）', processingSizeFine: '細かめ（2400 px）', processingSizeNote: '写真の細かさを変えた場合は、もう一度比較してください。', processingSizeChanged: '写真の細かさを変更しました。もう一度比較してください。', sensitivity: '変化の拾いやすさ', sensitivityHelp: '右にすると、小さな色や明るさの違いも変化として表示します。', lessSensitive: '大きな変化だけ', moreSensitive: '小さな変化も', minArea: '小さな変化を無視', minAreaHelp: '細かな点やちらつきを省いて、まとまった変化を見やすくします。', keepSmall: '細かい変化も残す', removeSmall: '小さな変化を多めに無視', advanced: 'その他の調整', normalizeBrightness: '明るさの違いを抑える', normalizeBrightnessHelp: '照明の違いを変化として拾いにくくします', processingSize: '写真の細かさ', processingSizeHelp: '細かくするほど小さな変化を見つけやすくなりますが、処理は重くなります',
           resultTitle: '2. 変化を確認', resultHelp: 'まずは「変化を見る」で結果を確認します。必要なときだけ写真のズレや元画像を確認できます。', noResultTitle: '比較すると結果がここに表示されます', noResultBodyDesktop: 'Before / Afterを追加して「2枚を比較する」を押してください。', noResultBodyMobile: 'Before / Afterを追加したら「2枚を比較する」をタップしてください。', quality: 'ズレ補正', matches: '見つけた目印 / 採用した目印', changedArea: '変化した面積', regions: '変化した場所', regionUnit: ' 箇所', viewMode: '結果の見方', viewQuestion: '何を確認しますか？', viewQuestionHelp: '普段は「変化を見る」だけでOKです', viewDiffTitle: '変化を見る', viewDiffDesc: '変わった場所を赤く強調します', viewOverlayTitle: 'ズレを確認', viewOverlayDesc: '2枚を重ねてズレが残っていないか見ます', sourceViewsTitle: '元画像を個別に見る', sourceViewsHint: 'ズレ補正を詳しく確認したいとき', viewReference: 'Before（基準画像）', viewReferenceDesc: '元の基準画像だけ表示', viewAligned: 'After（ズレ補正後）', viewAlignedDesc: 'Beforeに合わせて補正したAfterだけ表示', viewHintDiff: '赤く囲まれた部分が、変化として検出された場所です。', viewHintOverlay: 'Beforeとズレ補正後のAfterを重ねています。輪郭が大きく二重に見える場合はズレが残っています。', viewHintReference: 'Beforeの元画像を表示しています。', viewHintAligned: 'Beforeに合わせてズレを補正したAfterを表示しています。', overlayOpacity: '重ね具合', overlayBefore: 'Before', overlayAfter: 'After', technicalDetails: '比較の詳細', processingResolution: '比較に使った画像サイズ', outputFilename: '出力ファイル名', savePng: 'この表示をPNG保存',
@@ -849,7 +852,7 @@
           helpBasicsTitle: '基本操作', helpStep1: 'Beforeを追加します。Afterは写真を選ぶか、「Beforeに合わせて撮影」で撮影位置を合わせながら撮れます。', helpStep2: '「比較する」を押すと、2枚の写真で共通する目印を探して自動でズレを合わせます。', helpStep3: '赤い表示が多すぎる・少なすぎる場合は「結果を調整」を使います。時計や反射など毎回変わる場所は「無視する範囲」にできます。', helpStep4: 'まず「変化を見る」で確認します。「次の変化」「前の変化」で面積の大きい順に拡大でき、「表示を戻す」で全体に戻ります。拡大・移動は保存PNGや変化の判定を変えません。', helpPrivacyTitle: 'プライバシー', helpPrivacyBody: '画像と比較結果はこの端末内だけで処理されます。このアプリから画像をアップロードせず、比較に必要な機能も実行時に外部から読み込みません。', helpLimitsTitle: 'うまくズレを合わせにくい写真', helpLimit1: '撮影位置が大きく異なり、手前と奥の物でズレ方が大きく違う写真', helpLimit2: '無地の壁など、対応付けられる模様や角がほとんどない写真', helpLimit3: '大部分が別の物で隠れている、または構図が大きく変わった写真', helpLimit4: '強い影、照明、反射の変化は「物の変化」として検出される場合があります。', helpNotesTitle: '注意事項', helpNoteResolution: '動作を安定させるため、写真は選んだ「写真の細かさ」に合わせて縮小して比較します。保存画像も同じ大きさです。', helpNoteDecision: '自動で見つけた変化は確認の補助です。工事・品質検査など重要な判定では元画像も確認してください。', helpNoteReplacement: '40MB以下の対応画像を選び直すと、古い結果と無視範囲はすぐ消えます。読み込み中は比較・保存できません。読み込みに失敗した場合は元画像が残りますが、再比較が必要です。キャンセルや形式・サイズの不適合では結果は残ります。', helpNoteMemory: '大きな写真は端末のメモリを多く使います。スマホで不安定な場合は「写真の細かさ」を「軽め」にしてください。', helpOffline: 'GitHub Pages版も、ページ読み込み後の比較処理は端末内だけで行います。完全オフラインではdist/index.htmlを直接開けます。', viewSliderTitle: 'スライダーで見る', viewSliderDesc: '指で動かしてBefore / Afterを見比べます', viewBlinkTitle: '交互に見る', viewBlinkDesc: 'Before / Afterを交互に切り替えて変化を見ます', viewHintSlider: '境界線を動かしながら、BeforeとAfterを左右で見比べます。', viewHintBlink: 'BeforeとAfterを交互に表示しています。変わった場所を目で追いたいときに便利です。', sliderBalance: '境界位置', sliderLeft: 'After', sliderRight: 'Before', blinkSpeed: '切り替え速度', blinkSpeedSlow: 'ゆっくり', blinkSpeedNormal: '標準', blinkSpeedFast: '速め', blinkPause: '一時停止', blinkResume: '再開', zoomPanTitle: '拡大して確認', zoomPanHelp: 'ピンチで拡大、ドラッグで移動できます', zoomPanHelpMobile: 'ピンチで拡大、ドラッグで移動できます', zoomReset: '表示を戻す', regionNavigation: '変化した場所を順に確認', previousRegion: '前の変化', nextRegion: '次の変化', regionPosition: '変化 {current} / {total}', noRegions: '変化した場所はありません', ignoreTitle: '無視する範囲', ignoreHelp: '光の反射や時計など、毎回変わる場所を比較対象から外せます。', ignoreModeStart: '範囲を追加', ignoreModeStop: '追加を終了', ignoreHideFrames: '枠を隠す', ignoreShowFrames: '枠を表示', ignoreUndo: '1つ戻す', ignoreClear: 'すべて消す', ignoreHintIdle: '「範囲を追加」を押して、画像上をドラッグするとその部分を無視できます。', ignoreHintActive: '追加中です。画像上をドラッグして無視する範囲を囲んでください。', ignoreCount: '無視する範囲: {count}', ignoreAdded: '無視する範囲を追加しました。', ignoreRemoved: '最後の範囲を取り消しました。', ignoreCleared: '無視する範囲を消しました。', minAreaCurrent: 'いまの目安: 約{value} px²', cameraGuideButton: 'Beforeに合わせて撮影', cameraGuideButtonHelp: 'Beforeを重ねて撮影位置を合わせます', cameraGuideNeedBefore: '先にBeforeを追加すると撮影ガイドを使えます', cameraGuideTitle: 'After撮影ガイド', cameraGuideIntro: 'Beforeが半透明で重なります。輪郭や角が合うように端末の位置を合わせてから撮影してください。', cameraGuideStarting: 'カメラを準備しています…', cameraGuideReady: '位置を合わせたら撮影してください', cameraGuideOpacity: 'Beforeの濃さ', cameraGuideTip: 'Beforeの線とカメラ映像が重なるほど、比較しやすくなります。', cameraGuideHideBefore: 'Beforeを隠す', cameraGuideShowBefore: 'Beforeを表示', cameraGuideCapture: '撮影してAfterに使う', cameraGuideCapturing: '撮影しています…', cameraGuideCaptured: '撮影した写真をAfterに追加しました。', cameraGuidePrivacy: 'カメラ映像と撮影した写真は端末内だけで扱います。カメラの利用にはブラウザーの許可が必要です。', cameraGuideUnavailable: 'このブラウザーでは撮影ガイドを利用できません。通常の「Afterを追加」を使ってください。', cameraGuidePermissionError: 'カメラを開けませんでした。ブラウザーのカメラ許可を確認してください。', cameraGuideNoCamera: '利用できるカメラが見つかりませんでした。', cameraGuideOpenError: 'カメラを開けませんでした。通常の「Afterを追加」をお試しください。', cameraGuideCaptureError: '撮影に失敗しました。もう一度お試しください。', cancel: 'キャンセル'
         },
         en: {
-          brandMeta: 'Aligned image diff · Local processing', helpTitle: 'How to use & notes', close: 'Close', introTitle: 'Fix camera offset, then find what changed', lead: 'Even when Before and After were taken a little differently, align them automatically and highlight meaningful changes.', localBadge: 'Fully local processing',
+          brandMeta: 'Aligned image diff · Local processing', helpTitle: 'How to use & notes', close: 'Close', introTitle: 'Compare two photos', lead: 'Automatically align two photos of the same place and mark differences in red.', localBadge: 'Fully local processing',
           sourceTitle: '1. Choose Before / After', sourceHelp: 'Choose two photos of the same place. Small camera-position differences are corrected automatically.', referenceTitle: 'Before (reference)', referenceSubtitle: 'Before', compareTitle: 'After (compare)', compareSubtitle: 'After', addReference: 'Add Before', addCompare: 'Add After', dropHint: 'Tap to choose / drop on desktop', replace: 'Replace', remove: 'Remove', swap: 'Swap Before / After', runCompare: 'Compare two photos',
           adjustBadge: 'Only if needed', settingsTitle: 'Tune the result', settingsHelp: 'Use this when too much or too little is highlighted.', settingsInlineHelp: 'When too much or too little is highlighted', processingSizeLight: 'Light (1200 px)', processingSizeStandard: 'Standard (1800 px)', processingSizeFine: 'Fine (2400 px)', processingSizeNote: 'If you change Photo detail, compare the two photos again.', processingSizeChanged: 'Photo detail changed. Compare the two photos again.', sensitivity: 'Change sensitivity', sensitivityHelp: 'Move right to include smaller color and brightness changes.', lessSensitive: 'Larger changes only', moreSensitive: 'Include subtle changes', minArea: 'Ignore tiny changes', minAreaHelp: 'Hides tiny specks so larger changes are easier to see.', keepSmall: 'Keep tiny changes', removeSmall: 'Ignore more tiny changes', advanced: 'Other adjustments', normalizeBrightness: 'Reduce lighting differences', normalizeBrightnessHelp: 'Makes lighting changes less likely to appear as real changes', processingSize: 'Photo detail', processingSizeHelp: 'More detail can reveal smaller changes, but uses more memory',
           resultTitle: '2. Review changes', resultHelp: 'Start with “View changes”. Check photo alignment or the original images only when needed.', noResultTitle: 'Your result will appear here', noResultBodyDesktop: 'Add Before / After and press “Compare two photos”.', noResultBodyMobile: 'Add Before / After, then tap “Compare two photos”.', quality: 'Photo alignment', matches: 'Landmarks found / landmarks used', changedArea: 'Changed area', regions: 'Changed regions', regionUnit: '', viewMode: 'How to review the result', viewQuestion: 'What do you want to check?', viewQuestionHelp: '“View changes” is enough for most checks', viewDiffTitle: 'View changes', viewDiffDesc: 'Highlights detected changes in red', viewOverlayTitle: 'Check photo alignment', viewOverlayDesc: 'Overlays the two images to reveal misalignment', sourceViewsTitle: 'View images separately', sourceViewsHint: 'For a closer look at how the photos were aligned', viewReference: 'Before (reference)', viewReferenceDesc: 'Show only the original reference image', viewAligned: 'After (adjusted)', viewAlignedDesc: 'Show only After adjusted to match Before', viewHintDiff: 'Red outlines mark areas detected as changed.', viewHintOverlay: 'Before and aligned After are overlaid. Strong doubled edges can indicate imperfect alignment.', viewHintReference: 'Showing the original Before image.', viewHintAligned: 'Showing the After image warped into the Before position.', overlayOpacity: 'Overlay balance', overlayBefore: 'Before', overlayAfter: 'After', technicalDetails: 'Comparison details', processingResolution: 'Image size used for comparison', outputFilename: 'Output filename', savePng: 'Save this view as PNG',
@@ -891,6 +894,8 @@
         outputTouched: false
       };
       const stageInteraction = { pointers: new Map(), mode: '', anchor: null, lastX: 0, lastY: 0, pinchStartDistance: 0, pinchStartZoom: 1 };
+      let cameraGuideGeneration = 0;
+      let cancelCameraMetadata = null;
 
       function readStorage(key) { try { return localStorage.getItem(key); } catch { return null; } }
       function writeStorage(key, value) { try { localStorage.setItem(key, value); } catch { /* unavailable */ } }
@@ -905,11 +910,18 @@
 function updateCameraGuideUi() {
   const button = $('#openCameraGuideButton');
   if (!button) return;
-  button.disabled = !state.sources.reference || ['loading-runtime','processing','processing-diff'].includes(state.phase);
+  button.disabled = !state.sources.reference || hasPendingDecode() || ['loading-runtime','processing','processing-diff'].includes(state.phase);
   const help = $('#cameraGuideButtonHelp');
   if (help) help.textContent = state.sources.reference ? t('cameraGuideButtonHelp') : t('cameraGuideNeedBefore');
 }
 function releaseCameraGuide() {
+  // Invalidate camera requests that are still waiting for permission, metadata, or playback.
+  cameraGuideGeneration += 1;
+  if (cancelCameraMetadata) {
+    const cancel = cancelCameraMetadata;
+    cancelCameraMetadata = null;
+    cancel();
+  }
   if (state.cameraStream) {
     for (const track of state.cameraStream.getTracks()) { try { track.stop(); } catch { /* ignore */ } }
     state.cameraStream = null;
@@ -931,10 +943,11 @@ function cameraErrorMessage(error) {
   return t('cameraGuideOpenError');
 }
 async function openCameraGuide() {
-  if (!state.sources.reference) { toast(t('cameraGuideNeedBefore'), { tone: 'warning' }); return; }
+  if (!state.sources.reference || hasPendingDecode()) { toast(t('cameraGuideNeedBefore'), { tone: 'warning' }); return; }
   if (!navigator.mediaDevices?.getUserMedia) { toast(t('cameraGuideUnavailable'), { tone: 'warning' }); return; }
   const dialog = $('#cameraGuideDialog');
   releaseCameraGuide();
+  const session = cameraGuideGeneration;
   state.cameraOverlayVisible = true;
   $('#cameraGuideOverlayToggle').setAttribute('aria-pressed', 'true');
   $('#cameraGuideOverlayToggle').textContent = t('cameraGuideHideBefore');
@@ -946,16 +959,37 @@ async function openCameraGuide() {
   if (!dialog.open) dialog.showModal();
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } } });
-    if (!dialog.open) { for (const track of stream.getTracks()) track.stop(); return; }
+    if (session !== cameraGuideGeneration || !dialog.open) {
+      for (const track of stream.getTracks()) { try { track.stop(); } catch { /* ignore */ } }
+      return;
+    }
     state.cameraStream = stream;
     const video = $('#cameraGuideVideo'); video.srcObject = stream;
-    if (video.readyState < 1) await new Promise((resolve, reject) => { const done = () => { cleanup(); resolve(); }; const fail = () => { cleanup(); reject(new Error('video metadata failed')); }; const cleanup = () => { video.removeEventListener('loadedmetadata', done); video.removeEventListener('error', fail); }; video.addEventListener('loadedmetadata', done, { once: true }); video.addEventListener('error', fail, { once: true }); });
+    if (video.readyState < 1) {
+      const ready = await new Promise((resolve, reject) => {
+        const cleanup = () => {
+          video.removeEventListener('loadedmetadata', done);
+          video.removeEventListener('error', fail);
+          if (cancelCameraMetadata === cancel) cancelCameraMetadata = null;
+        };
+        const done = () => { cleanup(); resolve(true); };
+        const fail = () => { cleanup(); reject(new Error('video metadata failed')); };
+        const cancel = () => { cleanup(); resolve(false); };
+        cancelCameraMetadata = cancel;
+        video.addEventListener('loadedmetadata', done, { once: true });
+        video.addEventListener('error', fail, { once: true });
+        if (video.readyState >= 1) done();
+      });
+      if (!ready || session !== cameraGuideGeneration || !dialog.open) return;
+    }
     try { await video.play(); } catch { /* autoplay may already have started */ }
+    if (session !== cameraGuideGeneration || !dialog.open) return;
     if (video.videoWidth && video.videoHeight) $('#cameraGuideStage').style.aspectRatio = `${video.videoWidth} / ${video.videoHeight}`;
     $('#captureCameraGuideButton').disabled = false;
     setCameraGuideStatus(t('cameraGuideReady'));
-    setTimeout(() => { if ($('#cameraGuideDialog').open) setCameraGuideStatus(''); }, 1800);
+    setTimeout(() => { if (session === cameraGuideGeneration && dialog.open) setCameraGuideStatus(''); }, 1800);
   } catch (error) {
+    if (session !== cameraGuideGeneration) return;
     console.error(error); releaseCameraGuide(); setCameraGuideStatus(cameraErrorMessage(error), 'error');
   }
 }
@@ -970,15 +1004,23 @@ function cameraFilename() {
 async function captureCameraGuide() {
   const video = $('#cameraGuideVideo');
   if (!state.cameraStream || !video.videoWidth || !video.videoHeight) return;
+  const session = cameraGuideGeneration;
+  const dialog = $('#cameraGuideDialog');
+  const reference = state.sources.reference;
+  const isCurrent = () => session === cameraGuideGeneration && dialog.open && reference === state.sources.reference;
   const button = $('#captureCameraGuideButton'); button.disabled = true; setCameraGuideStatus(t('cameraGuideCapturing'));
   try {
     const canvas = document.createElement('canvas'); canvas.width = video.videoWidth; canvas.height = video.videoHeight;
     const ctx = canvas.getContext('2d', { alpha: false }); ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
     const blob = await new Promise((resolve, reject) => canvas.toBlob(value => value ? resolve(value) : reject(new Error('capture failed')), 'image/jpeg', .92));
+    if (!isCurrent()) return;
     const file = new File([blob], cameraFilename(), { type: 'image/jpeg', lastModified: Date.now() });
-    await setSource('compare', file);
+    const accepted = await setSource('compare', file, isCurrent);
+    if (!isCurrent()) return;
+    if (!accepted) { button.disabled = false; setCameraGuideStatus(t('cameraGuideCaptureError'), 'error'); return; }
     closeCameraGuide(); toast(t('cameraGuideCaptured'), { tone: 'success' });
   } catch (error) {
+    if (!isCurrent()) return;
     console.error(error); button.disabled = false; setCameraGuideStatus(t('cameraGuideCaptureError'), 'error');
   }
 }
@@ -1242,25 +1284,27 @@ function setView(view) {
         const ctx = canvas.getContext('2d'); ctx.clearRect(0, 0, canvas.width, canvas.height); ctx.drawImage(source.drawable, 0, 0, canvas.width, canvas.height);
         card.classList.add('has-image'); fileEl.textContent = source.file.name; detailEl.textContent = `${source.width} × ${source.height} · ${formatBytes(source.file.size)}`;
       }
-      async function setSource(side, file) {
-        if (!file) return;
-        if (!isSupportedImage(file)) { toast(t('unsupportedImage'), { tone: 'warning' }); return; }
-        if (file.size > 40 * 1024 * 1024) { toast(t('fileTooLarge'), { tone: 'warning' }); return; }
+      async function setSource(side, file, isCurrent = () => true) {
+        if (!file || !isCurrent()) return false;
+        if (!isSupportedImage(file)) { toast(t('unsupportedImage'), { tone: 'warning' }); return false; }
+        if (file.size > 40 * 1024 * 1024) { toast(t('fileTooLarge'), { tone: 'warning' }); return false; }
         const decodeToken = ++state.decodeGeneration[side];
         state.pendingDecode[side] = true;
         clearIgnoreState();
         invalidateResult(Boolean(state.sources[side] || state.result));
         try {
           const decoded = await decodeImage(file);
-          if (decodeToken !== state.decodeGeneration[side]) { closeDrawable(decoded); return; }
+          if (decodeToken !== state.decodeGeneration[side] || !isCurrent()) { closeDrawable(decoded); return false; }
           const old = state.sources[side];
           state.sources[side] = { file, ...decoded };
           closeDrawable(old);
           drawPreview(side);
           if (side === 'compare' && !state.outputTouched) $('#outputFilename').value = defaultOutputName(file.name);
+          return true;
         } catch (error) {
-          if (decodeToken !== state.decodeGeneration[side]) return;
+          if (decodeToken !== state.decodeGeneration[side] || !isCurrent()) return false;
           console.error(error); toast(t('decodeFailed'), { tone: 'warning' });
+          return false;
         } finally {
           // An older decode cannot release a newer selection's pending gate.
           if (decodeToken === state.decodeGeneration[side]) {
@@ -1459,6 +1503,8 @@ function setView(view) {
             cv.rectangle(valid, p1, p2, new cv.Scalar(0, 0, 0, 0), -1);
           }
           kernel = cv.getStructuringElement(cv.MORPH_ELLIPSE, new cv.Size(3, 3)); cv.morphologyEx(rawMask, rawMask, cv.MORPH_OPEN, kernel); cv.morphologyEx(rawMask, rawMask, cv.MORPH_CLOSE, kernel);
+          // Morphology can regrow pixels across ignored or invalid borders; reapply the validity mask.
+          cv.bitwise_and(rawMask, valid, rawMask);
           cv.findContours(rawMask, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
           filtered.create(rawMask.rows, rawMask.cols, cv.CV_8UC1); filtered.setTo(new cv.Scalar(0, 0, 0, 0));
           const minArea = getMinAreaThreshold(); const regions = [];
@@ -1644,6 +1690,8 @@ resultStage.addEventListener('pointerdown', event => {
     stageInteraction.mode = 'ignore'; renderResult(); return;
   }
   if (stageInteraction.pointers.size === 2) {
+    // Two-finger navigation cancels a pending ignored rectangle instead of committing it.
+    if (state.ignoreDraft) { state.ignoreDraft = null; renderResult(); }
     const pts = Array.from(stageInteraction.pointers.values());
     stageInteraction.mode = 'pinch';
     stageInteraction.pinchStartDistance = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
@@ -1681,13 +1729,18 @@ function finishStagePointer(event) {
   if (stageInteraction.pointers.has(event.pointerId)) stageInteraction.pointers.delete(event.pointerId);
   if (stageInteraction.mode === 'ignore' && state.ignoreDraft) {
     const draft = state.ignoreDraft; const x = Math.min(draft.x0, draft.x1); const y = Math.min(draft.y0, draft.y1); const w = Math.abs(draft.x1 - draft.x0); const h = Math.abs(draft.y1 - draft.y0);
-    if (w >= 8 && h >= 8) {
+    if (event.type === 'pointerup' && w >= 8 && h >= 8) {
       state.ignoredRegions.push({ x: x / Math.max($('#resultCanvas').width,1), y: y / Math.max($('#resultCanvas').height,1), width: w / Math.max($('#resultCanvas').width,1), height: h / Math.max($('#resultCanvas').height,1) });
       toast(t('ignoreAdded')); updateIgnoreUi(); if (state.alignment) scheduleDiffRefresh();
     }
     state.ignoreDraft = null; renderResult();
   }
-  if (stageInteraction.pointers.size < 2) stageInteraction.mode = stageInteraction.pointers.size ? 'pan' : '';
+  if (stageInteraction.pointers.size < 2) {
+    const remaining = stageInteraction.pointers.values().next().value;
+    stageInteraction.mode = remaining ? 'pan' : '';
+    stageInteraction.anchor = null;
+    if (remaining) { stageInteraction.lastX = remaining.x; stageInteraction.lastY = remaining.y; }
+  }
 }
 ['pointerup','pointercancel','pointerleave'].forEach(name => resultStage.addEventListener(name, finishStagePointer));
 window.addEventListener('resize', () => { if (state.result) fitStage(false); });

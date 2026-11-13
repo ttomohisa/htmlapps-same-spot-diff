@@ -17,9 +17,10 @@ function fixture({ language = 'en', storage = new Map(), stageWidth = 600, stage
       tagName: tag.toUpperCase(), attrs, dataset: {}, style: {}, disabled: 'disabled' in attrs, hidden: false, textContent: '', value: attrs.value || '', checked: 'checked' in attrs, open: false,
       clientWidth: stageWidth, clientHeight: stageHeight,
       classList: { add: c => classes.add(c), remove: c => classes.delete(c), contains: c => classes.has(c), toggle(c, force) { if (force ?? !classes.has(c)) classes.add(c); else classes.delete(c); } },
-      setAttribute(k, v) { this.attrs[k] = String(v); }, getAttribute(k) { return this.attrs[k] ?? null; },
+      setAttribute(k, v) { this.attrs[k] = String(v); }, getAttribute(k) { return this.attrs[k] ?? null; }, removeAttribute(k) { delete this.attrs[k]; },
       addEventListener(k, fn) { if (!listeners.has(k)) listeners.set(k, []); listeners.get(k).push(fn); },
-      async emit(k, data = {}) { for (const fn of listeners.get(k) || []) await fn({ target: this, preventDefault() {}, ...data }); },
+      removeEventListener(k, fn) { listeners.set(k, (listeners.get(k) || []).filter(listener => listener !== fn)); },
+      async emit(k, data = {}) { for (const fn of listeners.get(k) || []) await fn({ type: k, target: this, preventDefault() {}, ...data }); },
       click() { if (tag === 'a') downloads.push({ filename: this.download, blob: urls.get(this.href) }); else if (!this.disabled) return this.emit('click'); },
       getBoundingClientRect() { return { left: 0, top: 0, width: this.clientWidth, height: this.clientHeight }; },
       scrollIntoView() {}, setPointerCapture() {}, close() { this.open = false; }, showModal() { this.open = true; }
@@ -54,7 +55,9 @@ function fixture({ language = 'en', storage = new Map(), stageWidth = 600, stage
   };
   const document = { querySelector: s => queryAll(s)[0] || null, querySelectorAll: queryAll, getElementById: id => ids.get(id), createElement: tag => element(tag), documentElement: {} };
   const context = {
-    document, navigator: { language }, localStorage: { getItem: key => storage.get(key) ?? null, setItem: (key, value) => storage.set(key, String(value)) }, console: { error: error => errors.push(error) },
+    document, navigator: { language }, File: class extends Blob {
+      constructor(parts, name, options = {}) { super(parts, options); this.name = name; this.lastModified = options.lastModified ?? Date.now(); }
+    }, localStorage: { getItem: key => storage.get(key) ?? null, setItem: (key, value) => storage.set(key, String(value)) }, console: { error: error => errors.push(error) },
     Blob, Uint8Array, Uint8ClampedArray, TextDecoder, TextEncoder, Response, DecompressionStream, atob, btoa, URL: { createObjectURL(blob) { const url = `blob:${urls.size}`; urls.set(url, blob); return url; }, revokeObjectURL() {} },
     matchMedia: q => ({ matches: q.includes('max-width') ? stageWidth <= 600 : false, addEventListener() {} }),
     requestAnimationFrame: fn => frames.push(fn),
