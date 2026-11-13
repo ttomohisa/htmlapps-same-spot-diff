@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.0.7 - 2026-11-13
+
+- Fix OpenCV WebAssembly initialization in self-extracting HTML while retaining the no-network CSP.
+- Prevent stale camera streams and false-success capture messages; guard source decoding.
+- Fix pinch-to-pan transitions and ignored-region masking at boundaries.
+- Simplify the Japanese/English hero and hide the local-processing badge on phones.
+- Balance visible Japanese/English heading sizes based on glyph metrics.
+- Add browser regression tests and automatic GitHub tag/Release publishing after successful main deployment.
+
+
 ## 1.0.6 - 2026-10-27
 
 - Keep the header version badge visible at narrow widths by truncating only the app title.
