@@ -95,43 +95,46 @@ async function main() {
             }), label + ': desktop badge text fits');
             const hero = page.locator('#heroTitle');
             assert.equal(await hero.innerText(), language === 'ja' ? '2枚の写真を比較' : 'Compare two photos', label + ': task-first title');
-            // A matching CSS font-size does not guarantee matching visible glyph height:
-            // CJK and Latin text use different font metrics and fallback fonts.
+            // The header app name, not the hero/section copy, must stay optically
+            // identical when switching Japanese and English on a phone.
             const titleMetrics = async () => page.evaluate(() => {
-              function measure(id) {
-                const el = document.getElementById(id);
-                const style = getComputedStyle(el);
-                const canvas = document.createElement('canvas');
-                const context = canvas.getContext('2d');
-                context.font = `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
-                const metrics = context.measureText(el.textContent.trim());
-                return {
-                  inkHeight: metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent,
-                  fontSize: style.fontSize,
-                  fits: el.scrollWidth <= el.clientWidth + 1
-                };
-              }
-              return { language: document.documentElement.lang, hero: measure('heroTitle'), section: measure('sourceTitle') };
+              const el = document.getElementById('brandName');
+              const style = getComputedStyle(el);
+              const canvas = document.createElement('canvas');
+              const context = canvas.getContext('2d');
+              context.font = `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
+              const measured = context.measureText(el.textContent);
+              const parent = el.closest('.brand-name');
+              return {
+                language: document.documentElement.lang,
+                text: el.textContent,
+                fontSize: style.fontSize,
+                fontFamily: style.fontFamily,
+                fontWeight: style.fontWeight,
+                glyphHeight: measured.actualBoundingBoxAscent + measured.actualBoundingBoxDescent,
+                glyphWidth: measured.width,
+                renderedWidth: el.getBoundingClientRect().width,
+                fits: parent.scrollWidth <= parent.clientWidth + 1
+              };
             });
             await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
-            const firstTitles = await titleMetrics();
-            assert.equal(firstTitles.hero.fits, true, label + ': hero text fits');
-            assert.equal(firstTitles.section.fits, true, label + ': section text fits');
+            const beforeSwitch = await titleMetrics();
             await page.locator('#languageButton').click();
             await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
-            const translatedTitles = await titleMetrics();
+            const afterSwitch = await titleMetrics();
             await page.locator('#languageButton').click();
-            assert.equal(firstTitles.language, language, label + ': initial title language');
-            assert.equal(translatedTitles.language, language === 'ja' ? 'en' : 'ja', label + ': translated title language');
-            assert.equal(translatedTitles.hero.fits, true, label + ': translated hero text fits');
-            assert.equal(translatedTitles.section.fits, true, label + ': translated section text fits');
-            for (const name of ['hero', 'section']) {
-              const difference = Math.abs(firstTitles[name].inkHeight - translatedTitles[name].inkHeight);
-              console.log('TITLE INK ' + label + ' ' + name + ' ' + JSON.stringify({
-                current: firstTitles[name], translated: translatedTitles[name], difference
-              }));
-              assert.ok(difference <= 2.5, label + ': bilingual ' + name + ' visible glyph height differs by ' + difference.toFixed(2) + ' CSS px');
-            }
+            assert.equal(beforeSwitch.language, language, label + ': original header language');
+            assert.equal(afterSwitch.language, language === 'ja' ? 'en' : 'ja', label + ': switched header language');
+            assert.equal(beforeSwitch.text, 'Same Spot Diff', label + ': app name');
+            assert.equal(afterSwitch.text, beforeSwitch.text, label + ': same app name across languages');
+            assert.equal(beforeSwitch.fontSize, afterSwitch.fontSize, label + ': header text font size');
+            assert.equal(beforeSwitch.fontFamily, afterSwitch.fontFamily, label + ': header font family');
+            assert.equal(beforeSwitch.fontWeight, afterSwitch.fontWeight, label + ': header font weight');
+            assert.equal(beforeSwitch.glyphHeight, afterSwitch.glyphHeight, label + ': visible header glyph height');
+            assert.ok(Math.abs(beforeSwitch.glyphWidth - afterSwitch.glyphWidth) < 0.1, label + ': visible header glyph width');
+            assert.ok(Math.abs(beforeSwitch.renderedWidth - afterSwitch.renderedWidth) < 0.5, label + ': header layout width');
+            assert.ok(beforeSwitch.fits && afterSwitch.fits, label + ': header app name fits at this width');
+            console.log('HEADER FONT ' + label + ' ' + JSON.stringify({ beforeSwitch, afterSwitch }));
             assert.equal(await page.locator('main #buildMeta').count(), 0, label);
             assert.equal(await page.locator('footer').isVisible(), width > 600, label);
             await prepareApp(page, width, label);
