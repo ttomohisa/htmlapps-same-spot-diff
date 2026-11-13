@@ -59,12 +59,26 @@ jobs:
           }
           "tag_exists=$($tagExists.ToString().ToLowerInvariant())" >> $env:GITHUB_OUTPUT
 
-          & gh release view $tag --repo $env:GITHUB_REPOSITORY --json tagName *> $null
-          if ($LASTEXITCODE -eq 0) {
-            Write-Host "Release $tag already exists; leaving its assets unchanged."
-            "publish=false" >> $env:GITHUB_OUTPUT
-          } else {
-            "publish=true" >> $env:GITHUB_OUTPUT
+          # An absent release is expected on first publication. PowerShell 7 treats
+          # a nonzero exit from 'gh release view' as a terminating error under
+          # ErrorActionPreference=Stop. Query the API with an explicit 404 branch.
+          $releaseUrl = "https://api.github.com/repos/$env:GITHUB_REPOSITORY/releases/tags/$tag"
+          $headers = @{
+            Authorization = "Bearer $env:GH_TOKEN"
+            Accept = 'application/vnd.github+json'
+            'X-GitHub-Api-Version' = '2022-11-28'
+          }
+          $releaseResponse = Invoke-WebRequest -Uri $releaseUrl -Headers $headers -SkipHttpErrorCheck
+          switch ([int]$releaseResponse.StatusCode) {
+            200 {
+              Write-Host "Release $tag already exists; leaving its assets unchanged."
+              "publish=false" >> $env:GITHUB_OUTPUT
+            }
+            404 {
+              Write-Host "Release $tag does not exist yet; this is the first publication."
+              "publish=true" >> $env:GITHUB_OUTPUT
+            }
+            default { throw "Could not verify existing Release $tag (HTTP $($releaseResponse.StatusCode))." }
           }
 
       - name: Rebuild and verify both local-only HTML variants
